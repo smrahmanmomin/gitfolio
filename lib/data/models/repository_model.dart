@@ -149,9 +149,8 @@ class RepositoryModel extends Equatable {
     // Parse topics
     List<String> topicsList = [];
     if (json['topics'] != null && json['topics'] is List) {
-      topicsList = (json['topics'] as List)
-          .map((topic) => topic.toString())
-          .toList();
+      topicsList =
+          (json['topics'] as List).map((topic) => topic.toString()).toList();
     }
 
     // Parse owner information
@@ -309,37 +308,37 @@ class RepositoryModel extends Equatable {
 
   @override
   List<Object?> get props => [
-    id,
-    name,
-    fullName,
-    description,
-    htmlUrl,
-    language,
-    stargazersCount,
-    forksCount,
-    size,
-    updatedAt,
-    createdAt,
-    topics,
-    license,
-    hasIssues,
-    hasProjects,
-    hasDownloads,
-    hasWiki,
-    isFork,
-    forkCount,
-    watchersCount,
-    defaultBranch,
-    openIssuesCount,
-    isPrivate,
-    isArchived,
-    ownerLogin,
-    ownerAvatarUrl,
-    cloneUrl,
-    gitUrl,
-    sshUrl,
-    homepage,
-  ];
+        id,
+        name,
+        fullName,
+        description,
+        htmlUrl,
+        language,
+        stargazersCount,
+        forksCount,
+        size,
+        updatedAt,
+        createdAt,
+        topics,
+        license,
+        hasIssues,
+        hasProjects,
+        hasDownloads,
+        hasWiki,
+        isFork,
+        forkCount,
+        watchersCount,
+        defaultBranch,
+        openIssuesCount,
+        isPrivate,
+        isArchived,
+        ownerLogin,
+        ownerAvatarUrl,
+        cloneUrl,
+        gitUrl,
+        sshUrl,
+        homepage,
+      ];
 
   @override
   String toString() {

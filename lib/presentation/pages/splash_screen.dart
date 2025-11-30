@@ -105,16 +105,16 @@ class _SplashScreenState extends State<SplashScreen>
                 Text(
                   AppConstants.appName,
                   style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
                 const SizedBox(height: AppConstants.smallPadding),
                 Text(
                   'Your GitHub Portfolio',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Colors.white.withOpacity(0.9),
-                  ),
+                        color: Colors.white.withOpacity(0.9),
+                      ),
                 ),
                 const SizedBox(height: AppConstants.largePadding * 2),
                 // Loading indicator

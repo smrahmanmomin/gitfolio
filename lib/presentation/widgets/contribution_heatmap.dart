@@ -27,9 +27,8 @@ class ContributionHeatmap extends StatelessWidget {
       return const Center(child: Text('No contributions found'));
     }
 
-    final calendar =
-        contributionsCollection['contributionCalendar']
-            as Map<String, dynamic>?;
+    final calendar = contributionsCollection['contributionCalendar']
+        as Map<String, dynamic>?;
     if (calendar == null) {
       return const Center(child: Text('No calendar data'));
     }

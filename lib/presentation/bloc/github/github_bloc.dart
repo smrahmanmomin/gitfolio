@@ -135,9 +135,8 @@ class GithubBloc extends Bloc<GithubEvent, GithubState> {
             ? (state as GithubReposLoaded).repositories
             : <RepositoryModel>[];
 
-        final updatedRepos = event.append
-            ? [...existingRepos, ...repos]
-            : repos;
+        final updatedRepos =
+            event.append ? [...existingRepos, ...repos] : repos;
 
         emit(
           GithubReposLoaded(

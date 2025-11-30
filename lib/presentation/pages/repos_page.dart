@@ -44,8 +44,8 @@ class _ReposPageState extends State<ReposPage> {
               if (state.previousState is GithubUserLoaded) {
                 final prevState = state.previousState as GithubUserLoaded;
                 context.read<GithubBloc>().add(
-                  GithubFetchRepos(token: prevState.token),
-                );
+                      GithubFetchRepos(token: prevState.token),
+                    );
               }
             },
           );
@@ -129,8 +129,8 @@ class _ReposPageState extends State<ReposPage> {
                     : RefreshIndicator(
                         onRefresh: () async {
                           context.read<GithubBloc>().add(
-                            GithubFetchRepos(token: state.token),
-                          );
+                                GithubFetchRepos(token: state.token),
+                              );
                           await Future.delayed(const Duration(seconds: 1));
                         },
                         child: ListView.builder(

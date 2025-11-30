@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import 'core/themes/app_theme.dart';
 import 'presentation/bloc/bloc_providers.dart';
@@ -33,5 +33,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-
-

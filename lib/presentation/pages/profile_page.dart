@@ -31,8 +31,8 @@ class ProfilePage extends StatelessWidget {
               if (state.previousState is GithubUserLoaded) {
                 final prevState = state.previousState as GithubUserLoaded;
                 context.read<GithubBloc>().add(
-                  GithubFetchUser(token: prevState.token),
-                );
+                      GithubFetchUser(token: prevState.token),
+                    );
               }
             },
           );
@@ -42,8 +42,8 @@ class ProfilePage extends StatelessWidget {
           return RefreshIndicator(
             onRefresh: () async {
               context.read<GithubBloc>().add(
-                GithubRefreshData(token: state.token),
-              );
+                    GithubRefreshData(token: state.token),
+                  );
               // Wait a bit for the refresh to complete
               await Future.delayed(const Duration(seconds: 1));
             },
@@ -107,15 +107,15 @@ class ProfilePage extends StatelessWidget {
               Text(
                 state.user.name!,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                      fontWeight: FontWeight.bold,
+                    ),
                 textAlign: TextAlign.center,
               ),
             Text(
               '@${state.user.login}',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-              ),
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
             ),
             const SizedBox(height: AppConstants.defaultPadding),
             ElevatedButton.icon(

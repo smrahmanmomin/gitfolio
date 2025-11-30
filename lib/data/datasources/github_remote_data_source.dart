@@ -57,24 +57,24 @@ class GithubRemoteDataSourceImpl implements GithubRemoteDataSource {
     try {
       final response = await client
           .post(
-            Uri.parse(AppConstants.githubTokenUrl),
-            headers: {
-              'Accept': 'application/json',
-              'Content-Type': 'application/json',
-            },
-            body: jsonEncode({
-              'client_id': AppConstants.githubClientId,
-              'client_secret': AppConstants.githubClientSecret,
-              'code': code,
-              'redirect_uri': AppConstants.githubRedirectUri,
-            }),
-          )
+        Uri.parse(AppConstants.githubTokenUrl),
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'client_id': AppConstants.githubClientId,
+          'client_secret': AppConstants.githubClientSecret,
+          'code': code,
+          'redirect_uri': AppConstants.githubRedirectUri,
+        }),
+      )
           .timeout(
-            Duration(seconds: AppConstants.apiTimeout),
-            onTimeout: () {
-              throw NetworkException.timeout();
-            },
-          );
+        Duration(seconds: AppConstants.apiTimeout),
+        onTimeout: () {
+          throw NetworkException.timeout();
+        },
+      );
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body) as Map<String, dynamic>;
@@ -117,21 +117,19 @@ class GithubRemoteDataSourceImpl implements GithubRemoteDataSource {
   @override
   Future<GithubUserModel> getUserData(String token) async {
     try {
-      final response = await client
-          .get(
-            Uri.parse('${AppConstants.githubApiBaseUrl}/user'),
-            headers: {
-              'Accept': 'application/vnd.github+json',
-              'Authorization': 'Bearer $token',
-              'X-GitHub-Api-Version': AppConstants.githubApiVersion,
-            },
-          )
-          .timeout(
-            Duration(seconds: AppConstants.apiTimeout),
-            onTimeout: () {
-              throw NetworkException.timeout();
-            },
-          );
+      final response = await client.get(
+        Uri.parse('${AppConstants.githubApiBaseUrl}/user'),
+        headers: {
+          'Accept': 'application/vnd.github+json',
+          'Authorization': 'Bearer $token',
+          'X-GitHub-Api-Version': AppConstants.githubApiVersion,
+        },
+      ).timeout(
+        Duration(seconds: AppConstants.apiTimeout),
+        onTimeout: () {
+          throw NetworkException.timeout();
+        },
+      );
 
       return _handleUserResponse(response);
     } on GitHubApiException {
@@ -159,24 +157,22 @@ class GithubRemoteDataSourceImpl implements GithubRemoteDataSource {
     int perPage = 30,
   }) async {
     try {
-      final response = await client
-          .get(
-            Uri.parse(
-              '${AppConstants.githubApiBaseUrl}/user/repos'
-              '?sort=updated&page=$page&per_page=$perPage',
-            ),
-            headers: {
-              'Accept': 'application/vnd.github+json',
-              'Authorization': 'Bearer $token',
-              'X-GitHub-Api-Version': AppConstants.githubApiVersion,
-            },
-          )
-          .timeout(
-            Duration(seconds: AppConstants.apiTimeout),
-            onTimeout: () {
-              throw NetworkException.timeout();
-            },
-          );
+      final response = await client.get(
+        Uri.parse(
+          '${AppConstants.githubApiBaseUrl}/user/repos'
+          '?sort=updated&page=$page&per_page=$perPage',
+        ),
+        headers: {
+          'Accept': 'application/vnd.github+json',
+          'Authorization': 'Bearer $token',
+          'X-GitHub-Api-Version': AppConstants.githubApiVersion,
+        },
+      ).timeout(
+        Duration(seconds: AppConstants.apiTimeout),
+        onTimeout: () {
+          throw NetworkException.timeout();
+        },
+      );
 
       return _handleReposResponse(response);
     } on GitHubApiException {
@@ -204,8 +200,7 @@ class GithubRemoteDataSourceImpl implements GithubRemoteDataSource {
       final user = await getUserData(token);
 
       // Fetch contribution stats using GraphQL API
-      final query =
-          '''
+      final query = '''
         query {
           user(login: "${user.login}") {
             contributionsCollection {
@@ -225,19 +220,19 @@ class GithubRemoteDataSourceImpl implements GithubRemoteDataSource {
 
       final response = await client
           .post(
-            Uri.parse(AppConstants.githubGraphqlUrl),
-            headers: {
-              'Authorization': 'Bearer $token',
-              'Content-Type': 'application/json',
-            },
-            body: jsonEncode({'query': query}),
-          )
+        Uri.parse(AppConstants.githubGraphqlUrl),
+        headers: {
+          'Authorization': 'Bearer $token',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({'query': query}),
+      )
           .timeout(
-            Duration(seconds: AppConstants.apiTimeout),
-            onTimeout: () {
-              throw NetworkException.timeout();
-            },
-          );
+        Duration(seconds: AppConstants.apiTimeout),
+        onTimeout: () {
+          throw NetworkException.timeout();
+        },
+      );
 
       return _handleContributionsResponse(response);
     } on GitHubApiException {
@@ -353,8 +348,7 @@ class GithubRemoteDataSourceImpl implements GithubRemoteDataSource {
         throw GitHubApiException(
           'Validation failed',
           statusCode: 422,
-          details:
-              errorMessage ??
+          details: errorMessage ??
               'The request was well-formed but contains invalid data.',
         );
 

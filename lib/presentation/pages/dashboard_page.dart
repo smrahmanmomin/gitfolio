@@ -56,8 +56,8 @@ class _DashboardPageState extends State<DashboardPage> {
                 final state = context.read<GithubBloc>().state;
                 if (state is GithubUserLoaded) {
                   context.read<GithubBloc>().add(
-                    GithubRefreshData(token: state.token),
-                  );
+                        GithubRefreshData(token: state.token),
+                      );
                 }
               },
               tooltip: 'Refresh',

@@ -116,13 +116,13 @@ class GithubUserLoaded extends GithubState {
 
   @override
   List<Object?> get props => [
-    user,
-    repositories,
-    contributions,
-    currentPage,
-    hasMoreRepos,
-    token,
-  ];
+        user,
+        repositories,
+        contributions,
+        currentPage,
+        hasMoreRepos,
+        token,
+      ];
 
   @override
   String toString() =>

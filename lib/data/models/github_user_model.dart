@@ -189,25 +189,25 @@ class GithubUserModel extends Equatable {
 
   @override
   List<Object?> get props => [
-    login,
-    id,
-    avatarUrl,
-    name,
-    bio,
-    blog,
-    location,
-    email,
-    publicRepos,
-    followers,
-    following,
-    createdAt,
-    updatedAt,
-    company,
-    hireable,
-    twitterUsername,
-    htmlUrl,
-    publicGists,
-  ];
+        login,
+        id,
+        avatarUrl,
+        name,
+        bio,
+        blog,
+        location,
+        email,
+        publicRepos,
+        followers,
+        following,
+        createdAt,
+        updatedAt,
+        company,
+        hireable,
+        twitterUsername,
+        htmlUrl,
+        publicGists,
+      ];
 
   @override
   String toString() {
