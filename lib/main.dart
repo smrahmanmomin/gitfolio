@@ -6,10 +6,7 @@ import 'presentation/pages/splash_screen.dart';
 import 'presentation/pages/login_page.dart';
 import 'presentation/pages/dashboard_page.dart';
 
-import 'core/utils/network_interceptor.dart';
-
 void main() {
-  NetworkInterceptor.initialize();
   WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
@@ -36,4 +33,5 @@ class MyApp extends StatelessWidget {
     );
   }
 }
+
 
