@@ -281,11 +281,11 @@ class AppTheme {
       ),
 
       // Card
-      cardTheme: const CardThemeData(
+      cardTheme: CardThemeData(
         elevation: 0,
         color: _lightSurface,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(
+        shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(12)),
           side: BorderSide(color: Color(0xFFD0D7DE), width: 1),
         ),
@@ -385,11 +385,11 @@ class AppTheme {
       ),
 
       // Card
-      cardTheme: const CardThemeData(
+      cardTheme: CardThemeData(
         elevation: 0,
         color: _darkSurface,
         surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(
+        shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.all(Radius.circular(12)),
           side: BorderSide(color: Color(0xFF30363D), width: 1),
         ),
