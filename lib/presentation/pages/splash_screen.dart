@@ -40,6 +40,13 @@ class _SplashScreenState extends State<SplashScreen>
     );
 
     _controller.forward();
+
+    // Navigate to login page after animation completes
+    Future.delayed(const Duration(seconds: 3), () {
+      if (mounted) {
+        Navigator.of(context).pushReplacementNamed('/login');
+      }
+    });
   }
 
   @override
