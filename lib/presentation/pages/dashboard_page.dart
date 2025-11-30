@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/services/token_service.dart';
 import '../bloc/github/github_bloc.dart';
 import '../bloc/github/github_event.dart';
 import '../bloc/github/github_state.dart';
 import 'profile_page.dart';
 import 'repos_page.dart';
+import 'analytics_page.dart';
+import 'portfolio_page.dart';
+import 'settings_page.dart';
 
 /// Main dashboard with tab navigation.
 ///
@@ -23,8 +27,8 @@ class _DashboardPageState extends State<DashboardPage> {
   final List<Widget> _pages = [
     const ProfilePage(),
     const ReposPage(),
-    const _AnalyticsPlaceholder(),
-    const _PortfolioPlaceholder(),
+    const AnalyticsPage(),
+    const PortfolioPage(),
   ];
 
   @override
@@ -140,10 +144,15 @@ class _DashboardPageState extends State<DashboardPage> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(dialogContext);
-              context.read<GithubBloc>().add(const GithubLogout());
-              Navigator.of(context).pushReplacementNamed('/login');
+              // Clear saved token
+              await TokenService.clearToken();
+              // Logout from BLoC
+              if (context.mounted) {
+                context.read<GithubBloc>().add(const GithubLogout());
+                Navigator.of(context).pushReplacementNamed('/login');
+              }
             },
             child: const Text('Logout'),
           ),
@@ -153,73 +162,9 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   void _showSettingsDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Settings'),
-        content: const Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: Icon(Icons.brightness_6),
-              title: Text('Theme'),
-              subtitle: Text('Coming soon'),
-            ),
-            ListTile(
-              leading: Icon(Icons.notifications),
-              title: Text('Notifications'),
-              subtitle: Text('Coming soon'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Placeholder for Analytics section.
-class _AnalyticsPlaceholder extends StatelessWidget {
-  const _AnalyticsPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.bar_chart, size: 64),
-          SizedBox(height: 16),
-          Text('Analytics'),
-          SizedBox(height: 8),
-          Text('Coming soon!', style: TextStyle(color: Colors.grey)),
-        ],
-      ),
-    );
-  }
-}
-
-/// Placeholder for Portfolio section.
-class _PortfolioPlaceholder extends StatelessWidget {
-  const _PortfolioPlaceholder();
-
-  @override
-  Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.web, size: 64),
-          SizedBox(height: 16),
-          Text('Portfolio'),
-          SizedBox(height: 8),
-          Text('Coming soon!', style: TextStyle(color: Colors.grey)),
-        ],
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => const SettingsPage(),
       ),
     );
   }

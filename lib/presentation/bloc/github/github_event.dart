@@ -12,26 +12,33 @@ abstract class GithubEvent extends Equatable {
 
 // ==================== Authentication Events ====================
 
-/// Event to authenticate with GitHub using an OAuth code.
+/// Event to authenticate with GitHub using an OAuth code or Personal Access Token.
 ///
 /// This event is dispatched after the user completes the OAuth flow
-/// and returns with an authorization code.
+/// and returns with an authorization code, or when using a saved PAT.
 ///
 /// Example:
 /// ```dart
 /// context.read<GithubBloc>().add(GithubAuthenticate(code: authCode));
+/// // or
+/// context.read<GithubBloc>().add(GithubAuthenticate(token: savedToken));
 /// ```
 class GithubAuthenticate extends GithubEvent {
-  /// The OAuth authorization code received from GitHub
-  final String code;
+  /// The OAuth authorization code received from GitHub (optional if token provided)
+  final String? code;
 
-  const GithubAuthenticate({required this.code});
+  /// Direct Personal Access Token (optional if code provided)
+  final String? token;
+
+  const GithubAuthenticate({this.code, this.token})
+      : assert(code != null || token != null,
+            'Either code or token must be provided');
 
   @override
-  List<Object?> get props => [code];
+  List<Object?> get props => [code, token];
 
   @override
-  String toString() => 'GithubAuthenticate { code: $code }';
+  String toString() => 'GithubAuthenticate { code: $code, token: $token }';
 }
 
 // ==================== User Data Events ====================

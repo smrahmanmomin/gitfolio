@@ -39,19 +39,32 @@ class GithubBloc extends Bloc<GithubEvent, GithubState> {
 
   /// Handles the [GithubAuthenticate] event.
   ///
-  /// Exchanges the OAuth code for an access token and emits
-  /// [GithubAuthenticated] on success or [GithubError] on failure.
+  /// If a direct token is provided, emits [GithubAuthenticated] immediately.
+  /// Otherwise, exchanges the OAuth code for an access token.
   Future<void> _onAuthenticate(
     GithubAuthenticate event,
     Emitter<GithubState> emit,
   ) async {
+    // If token is provided directly (e.g., from saved token), use it
+    if (event.token != null) {
+      emit(GithubAuthenticated(token: event.token!));
+      // Auto-fetch user data
+      add(GithubFetchUser(token: event.token!));
+      return;
+    }
+
+    // Otherwise, exchange OAuth code for token
     emit(const GithubLoading(message: 'Authenticating...'));
 
-    final result = await repository.authenticate(event.code);
+    final result = await repository.authenticate(event.code!);
 
     result.fold(
       (failure) => emit(_mapFailureToError(failure)),
-      (token) => emit(GithubAuthenticated(token: token)),
+      (token) {
+        emit(GithubAuthenticated(token: token));
+        // Auto-fetch user data
+        add(GithubFetchUser(token: token));
+      },
     );
   }
 
@@ -61,6 +74,7 @@ class GithubBloc extends Bloc<GithubEvent, GithubState> {
   ///
   /// Fetches the authenticated user's profile data and emits
   /// [GithubUserLoaded] on success or [GithubError] on failure.
+  /// Automatically triggers repository fetch after user data loads.
   Future<void> _onFetchUser(
     GithubFetchUser event,
     Emitter<GithubState> emit,
@@ -85,6 +99,8 @@ class GithubBloc extends Bloc<GithubEvent, GithubState> {
         );
       } else {
         emit(GithubUserLoaded(user: user, token: event.token));
+        // Auto-fetch repositories after user data loads
+        add(GithubFetchRepos(token: event.token));
       }
     });
   }

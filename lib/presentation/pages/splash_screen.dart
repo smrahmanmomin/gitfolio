@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/services/token_service.dart';
+import '../bloc/github/github_bloc.dart';
+import '../bloc/github/github_event.dart';
 
 /// Splash screen displayed on app startup.
 ///
@@ -41,12 +45,25 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    // Navigate to login page after animation completes
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/login');
-      }
-    });
+    // Check for saved token and navigate accordingly
+    _checkAuthAndNavigate();
+  }
+
+  Future<void> _checkAuthAndNavigate() async {
+    await Future.delayed(const Duration(seconds: 2));
+
+    if (!mounted) return;
+
+    final token = await TokenService.getToken();
+
+    if (token != null && token.isNotEmpty) {
+      // Token exists, authenticate and navigate to dashboard
+      context.read<GithubBloc>().add(GithubAuthenticate(token: token));
+      Navigator.of(context).pushReplacementNamed('/dashboard');
+    } else {
+      // No token, navigate to login
+      Navigator.of(context).pushReplacementNamed('/login');
+    }
   }
 
   @override

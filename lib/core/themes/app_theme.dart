@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 /// Application theme configuration with light and dark modes.
 ///
@@ -280,7 +280,16 @@ class AppTheme {
         ),
       ),
 
-
+      // Card
+      cardTheme: CardThemeData(
+        elevation: 0,
+        color: _lightSurface,
+        surfaceTintColor: Colors.transparent,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+          side: BorderSide(color: Color(0xFFD0D7DE), width: 1),
+        ),
+      ),
 
       // Input decoration
       inputDecorationTheme: InputDecorationTheme(
@@ -375,7 +384,16 @@ class AppTheme {
         ),
       ),
 
-
+      // Card
+      cardTheme: CardThemeData(
+        elevation: 0,
+        color: _darkSurface,
+        surfaceTintColor: Colors.transparent,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(12)),
+          side: BorderSide(color: Color(0xFF30363D), width: 1),
+        ),
+      ),
 
       // Input decoration
       inputDecorationTheme: InputDecorationTheme(
@@ -433,8 +451,3 @@ class AppTheme {
     );
   }
 }
-
-
-
-
-

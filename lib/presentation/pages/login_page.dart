@@ -2,6 +2,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter/services.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/services/token_service.dart';
 import '../bloc/github/github_bloc.dart';
 import '../bloc/github/github_event.dart';
 import '../bloc/github/github_state.dart';
@@ -24,10 +25,17 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void _handleLogin() {
+  Future<void> _handleLogin() async {
     if (_formKey.currentState!.validate()) {
       final token = _tokenController.text.trim();
-      context.read<GithubBloc>().add(GithubFetchUser(token: token));
+
+      // Save token to local storage
+      await TokenService.saveToken(token);
+
+      // Authenticate and fetch user data
+      if (mounted) {
+        context.read<GithubBloc>().add(GithubFetchUser(token: token));
+      }
     }
   }
 
@@ -74,14 +82,21 @@ class _LoginPageState extends State<LoginPage> {
                       const SizedBox(height: 32),
                       Text(
                         AppConstants.appName,
-                        style: Theme.of(context).textTheme.displaySmall?.copyWith(fontWeight: FontWeight.bold),
+                        style: Theme.of(context)
+                            .textTheme
+                            .displaySmall
+                            ?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         'Your GitHub Portfolio',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.7),
-                        ),
+                        style:
+                            Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .onSurface
+                                      .withOpacity(0.7),
+                                ),
                       ),
                       const SizedBox(height: 48),
                       TextFormField(
@@ -92,8 +107,11 @@ class _LoginPageState extends State<LoginPage> {
                           hintText: 'ghp_xxxxxxxxxxxx',
                           prefixIcon: const Icon(Icons.key),
                           suffixIcon: IconButton(
-                            icon: Icon(_isObscured ? Icons.visibility : Icons.visibility_off),
-                            onPressed: () => setState(() => _isObscured = !_isObscured),
+                            icon: Icon(_isObscured
+                                ? Icons.visibility
+                                : Icons.visibility_off),
+                            onPressed: () =>
+                                setState(() => _isObscured = !_isObscured),
                           ),
                         ),
                         validator: (value) {
@@ -113,7 +131,8 @@ class _LoginPageState extends State<LoginPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('How to create a token:', style: Theme.of(context).textTheme.titleSmall),
+                            Text('How to create a token:',
+                                style: Theme.of(context).textTheme.titleSmall),
                             const SizedBox(height: 8),
                             Text(
                               '1. GitHub Settings > Developer settings\n2. Personal access tokens > Tokens (classic)\n3. Generate new token (classic)\n4. Select: user, repo, read:org\n5. Copy your token',
@@ -131,8 +150,16 @@ class _LoginPageState extends State<LoginPage> {
                             height: 56,
                             child: ElevatedButton.icon(
                               onPressed: isLoading ? null : _handleLogin,
-                              icon: isLoading ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.login),
-                              label: Text(isLoading ? 'Signing in...' : 'Sign in', style: const TextStyle(fontSize: 16)),
+                              icon: isLoading
+                                  ? const SizedBox(
+                                      width: 20,
+                                      height: 20,
+                                      child: CircularProgressIndicator(
+                                          strokeWidth: 2))
+                                  : const Icon(Icons.login),
+                              label: Text(
+                                  isLoading ? 'Signing in...' : 'Sign in',
+                                  style: const TextStyle(fontSize: 16)),
                             ),
                           );
                         },
@@ -141,8 +168,11 @@ class _LoginPageState extends State<LoginPage> {
                       Text(
                         'Your token is stored locally and never shared',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.5),
-                        ),
+                              color: Theme.of(context)
+                                  .colorScheme
+                                  .onSurface
+                                  .withOpacity(0.5),
+                            ),
                       ),
                     ],
                   ),
