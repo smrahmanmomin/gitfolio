@@ -1,3 +1,5 @@
+library;
+
 /// GitHub BLoC exports
 ///
 /// This file provides convenient access to all GitHub BLoC components.

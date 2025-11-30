@@ -281,7 +281,7 @@ class AppTheme {
       ),
 
       // Card
-      cardTheme: const CardThemeData(
+      cardTheme: CardThemeData(
         elevation: 0,
         color: _lightSurface,
         surfaceTintColor: Colors.transparent,
@@ -385,7 +385,7 @@ class AppTheme {
       ),
 
       // Card
-      cardTheme: const CardThemeData(
+      cardTheme: CardThemeData(
         elevation: 0,
         color: _darkSurface,
         surfaceTintColor: Colors.transparent,

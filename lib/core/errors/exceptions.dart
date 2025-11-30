@@ -1,3 +1,5 @@
+library;
+
 /// Custom exceptions for the GitFolio application.
 ///
 /// This file defines the exception hierarchy used throughout the app
