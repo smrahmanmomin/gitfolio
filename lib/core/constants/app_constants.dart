@@ -29,7 +29,10 @@ class AppConstants {
       '597a4c3546191bd8917e93a5f772a18c9bbdb63f';
 
   /// GitHub OAuth redirect URI
-  static const String githubRedirectUri = 'gitfolio://callback';
+  /// For GitHub Pages: https://smrahmanmomin.github.io/gitfolio/
+  /// For local dev: http://localhost:port/
+  static const String githubRedirectUri =
+      'https://smrahmanmomin.github.io/gitfolio/';
 
   /// GitHub OAuth scopes
   static const List<String> githubScopes = ['user', 'repo', 'read:org'];
