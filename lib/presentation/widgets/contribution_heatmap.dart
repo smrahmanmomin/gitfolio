@@ -114,11 +114,11 @@ class ContributionHeatmap extends StatelessWidget {
     if (count == 0) {
       return isDark ? Colors.grey.shade800 : Colors.grey.shade200;
     } else if (count < 5) {
-      return baseColor.withValues(alpha: 0.3);
+      return baseColor.withOpacity(0.3);
     } else if (count < 10) {
-      return baseColor.withValues(alpha: 0.5);
+      return baseColor.withOpacity(0.5);
     } else if (count < 15) {
-      return baseColor.withValues(alpha: 0.7);
+      return baseColor.withOpacity(0.7);
     } else {
       return baseColor;
     }

@@ -56,7 +56,7 @@ class RepoCard extends StatelessWidget {
                         border: Border.all(
                           color: Theme.of(
                             context,
-                          ).colorScheme.outline.withValues(alpha: 0.3),
+                          ).colorScheme.outline.withOpacity(0.3),
                         ),
                       ),
                       child: Text(
@@ -128,7 +128,7 @@ class RepoCard extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: Theme.of(
                           context,
-                        ).colorScheme.primary.withValues(alpha: 0.1),
+                        ).colorScheme.primary.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(

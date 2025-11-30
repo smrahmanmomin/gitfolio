@@ -160,7 +160,7 @@ class GithubUserCard extends StatelessWidget {
       avatar: Icon(
         icon,
         size: 16,
-        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+        color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
       ),
       label: Text(text, style: Theme.of(context).textTheme.bodySmall),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
