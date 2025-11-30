@@ -19,19 +19,16 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04  # This has Flutter pre-installed!
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
+      - name: Setup Flutter (fast - uses pre-installed)
+        run: |
+          flutter --version
+          flutter pub get
           
-      - name: Install dependencies
-        run: flutter pub get
-        
       - name: Build Web
         run: flutter build web --release --base-href /gitfolio/
         
