@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 /// Application theme configuration with light and dark modes.
 ///
@@ -451,3 +451,5 @@ class AppTheme {
     );
   }
 }
+
+
