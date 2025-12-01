@@ -4,6 +4,7 @@ import '../../core/constants/app_constants.dart';
 import '../../core/services/token_service.dart';
 import '../bloc/github/github_bloc.dart';
 import '../bloc/github/github_event.dart';
+import '../bloc/github/github_state.dart';
 
 /// Splash screen displayed on app startup.
 ///
@@ -20,6 +21,7 @@ class _SplashScreenState extends State<SplashScreen>
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   late Animation<double> _scaleAnimation;
+  bool _hasNavigated = false;
 
   @override
   void initState() {
@@ -45,7 +47,7 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    // Check for saved token and navigate accordingly
+    // Check for saved token and authenticate
     _checkAuthAndNavigate();
   }
 
@@ -57,12 +59,14 @@ class _SplashScreenState extends State<SplashScreen>
     final token = await TokenService.getToken();
 
     if (token != null && token.isNotEmpty) {
-      // Token exists, authenticate and navigate to dashboard
-      context.read<GithubBloc>().add(GithubAuthenticate(token: token));
-      Navigator.of(context).pushReplacementNamed('/dashboard');
+      // Token exists, fetch user data (will navigate when loaded)
+      context.read<GithubBloc>().add(GithubFetchUser(token: token));
     } else {
       // No token, navigate to login
-      Navigator.of(context).pushReplacementNamed('/login');
+      if (!_hasNavigated && mounted) {
+        _hasNavigated = true;
+        Navigator.of(context).pushReplacementNamed('/login');
+      }
     }
   }
 
@@ -75,82 +79,94 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Theme.of(context).colorScheme.primary,
-              Theme.of(context).colorScheme.primary.withOpacity(0.7),
-            ],
-          ),
-        ),
-        child: Center(
-          child: AnimatedBuilder(
-            animation: _controller,
-            builder: (context, child) {
-              return Opacity(
-                opacity: _fadeAnimation.value,
-                child: Transform.scale(
-                  scale: _scaleAnimation.value,
-                  child: child,
-                ),
-              );
-            },
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Logo/Icon
-                Container(
-                  width: 120,
-                  height: 120,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(
-                      AppConstants.defaultBorderRadius * 2,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.2),
-                        blurRadius: 20,
-                        spreadRadius: 5,
-                      ),
-                    ],
-                  ),
-                  child: Icon(
-                    Icons.code,
-                    size: 64,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                ),
-                const SizedBox(height: AppConstants.largePadding),
-                // App name
-                Text(
-                  AppConstants.appName,
-                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                const SizedBox(height: AppConstants.smallPadding),
-                Text(
-                  'Your GitHub Portfolio',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Colors.white.withOpacity(0.9),
-                      ),
-                ),
-                const SizedBox(height: AppConstants.largePadding * 2),
-                // Loading indicator
-                const SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 3,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                ),
+      body: BlocListener<GithubBloc, GithubState>(
+        listener: (context, state) {
+          if (state is GithubUserLoaded && !_hasNavigated) {
+            _hasNavigated = true;
+            Navigator.of(context).pushReplacementNamed('/dashboard');
+          } else if (state is GithubError && !_hasNavigated) {
+            _hasNavigated = true;
+            // If error loading with saved token, go to login
+            Navigator.of(context).pushReplacementNamed('/login');
+          }
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                Theme.of(context).colorScheme.primary,
+                Theme.of(context).colorScheme.primary.withOpacity(0.7),
               ],
+            ),
+          ),
+          child: Center(
+            child: AnimatedBuilder(
+              animation: _controller,
+              builder: (context, child) {
+                return Opacity(
+                  opacity: _fadeAnimation.value,
+                  child: Transform.scale(
+                    scale: _scaleAnimation.value,
+                    child: child,
+                  ),
+                );
+              },
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Logo/Icon
+                  Container(
+                    width: 120,
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(
+                        AppConstants.defaultBorderRadius * 2,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 20,
+                          spreadRadius: 5,
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.code,
+                      size: 64,
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                  const SizedBox(height: AppConstants.largePadding),
+                  // App name
+                  Text(
+                    AppConstants.appName,
+                    style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  const SizedBox(height: AppConstants.smallPadding),
+                  Text(
+                    'Your GitHub Portfolio',
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          color: Colors.white.withOpacity(0.9),
+                        ),
+                  ),
+                  const SizedBox(height: AppConstants.largePadding * 2),
+                  // Loading indicator
+                  const SizedBox(
+                    width: 40,
+                    height: 40,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
