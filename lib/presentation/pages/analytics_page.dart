@@ -443,7 +443,7 @@ class AnalyticsPage extends StatelessWidget {
                   ],
                 ),
               );
-            }).toList(),
+            }),
           ],
         ),
       ),
@@ -486,7 +486,7 @@ class AnalyticsPage extends StatelessWidget {
                   _buildRepositoryCard(repo),
                 ],
               );
-            }).toList(),
+            }),
           ],
         ),
       ),
@@ -518,7 +518,7 @@ class AnalyticsPage extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   color: _getLanguageColor(repo.language.toString())
-                      .withOpacity(0.2),
+                      .withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(

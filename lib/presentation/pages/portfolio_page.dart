@@ -68,7 +68,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
                       color: Theme.of(context)
                           .colorScheme
                           .onSurface
-                          .withOpacity(0.7),
+                          .withValues(alpha: 0.7),
                     ),
               ),
               const SizedBox(height: 24),
@@ -200,7 +200,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
                       child: Icon(
                         Icons.web,
                         size: 64,
-                        color: Colors.white.withOpacity(0.5),
+                        color: Colors.white.withValues(alpha: 0.5),
                       ),
                     ),
                     if (isSelected)
@@ -241,7 +241,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
                           color: Theme.of(context)
                               .colorScheme
                               .onSurface
-                              .withOpacity(0.7),
+                              .withValues(alpha: 0.7),
                         ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -284,7 +284,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
                       '${template.sections.length} sections',
                       style: Theme.of(context).textTheme.labelSmall,
                     ),
-                    backgroundColor: primaryColor.withOpacity(0.1),
+                    backgroundColor: primaryColor.withValues(alpha: 0.1),
                     side: BorderSide.none,
                     visualDensity: VisualDensity.compact,
                   ),
@@ -352,7 +352,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
                       color: Theme.of(context)
                           .colorScheme
                           .outline
-                          .withOpacity(0.5),
+                          .withValues(alpha: 0.5),
                     ),
                   ),
                   child: SingleChildScrollView(

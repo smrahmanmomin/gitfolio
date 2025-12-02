@@ -88,8 +88,10 @@ class StarHistoryChart extends StatelessWidget {
                 painter: _StarHistoryPainter(
                   dataPoints: starHistory.dataPoints,
                   color: Theme.of(context).colorScheme.primary,
-                  gridColor:
-                      Theme.of(context).colorScheme.outline.withOpacity(0.3),
+                  gridColor: Theme.of(context)
+                      .colorScheme
+                      .outline
+                      .withValues(alpha: 0.3),
                 ),
                 child: Container(),
               ),
@@ -130,7 +132,10 @@ class StarHistoryChart extends StatelessWidget {
         Text(
           label,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.6),
               ),
         ),
       ],
@@ -209,8 +214,8 @@ class _StarHistoryPainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          color.withOpacity(0.3),
-          color.withOpacity(0.05),
+          color.withValues(alpha: 0.3),
+          color.withValues(alpha: 0.05),
         ],
       ).createShader(Rect.fromLTWH(0, 0, size.width, size.height));
 

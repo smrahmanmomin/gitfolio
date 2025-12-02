@@ -284,7 +284,10 @@ class ProfilePage extends StatelessWidget {
             Icon(
               icon,
               size: 20,
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+              color: Theme.of(context)
+                  .colorScheme
+                  .onSurface
+                  .withValues(alpha: 0.6),
             ),
             const SizedBox(width: AppConstants.defaultPadding),
             Expanded(
@@ -294,7 +297,10 @@ class ProfilePage extends StatelessWidget {
               Icon(
                 Icons.open_in_new,
                 size: 16,
-                color: Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
+                color: Theme.of(context)
+                    .colorScheme
+                    .onSurface
+                    .withValues(alpha: 0.6),
               ),
           ],
         ),

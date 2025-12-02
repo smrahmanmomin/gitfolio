@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_web_auth_2/flutter_web_auth_2.dart';
 
 import '../constants/app_constants.dart';
@@ -9,8 +10,19 @@ import '../errors/exceptions.dart';
 class GithubOAuthService {
   GithubOAuthService._();
 
+  /// Whether the underlying OAuth flow is supported on the current platform.
+  ///
+  /// The flutter_web_auth_2 plugin is not available on Flutter Web, so we
+  /// gracefully disable the "Continue with GitHub" button there and ask the
+  /// user to fall back to tokens.
+  static bool get isSupported => !kIsWeb;
+
   /// Starts the OAuth authorization flow and returns the auth code on success.
   static Future<String> signIn() async {
+    if (!isSupported) {
+      throw UnsupportedError('GitHub OAuth is not available on this platform');
+    }
+
     final state = _generateState();
     final redirectUri = Uri.parse(AppConstants.githubRedirectUri);
     if (!redirectUri.hasScheme) {
