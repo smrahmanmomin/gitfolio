@@ -26,9 +26,26 @@ class _PortfolioPageState extends State<PortfolioPage> {
   Widget build(BuildContext context) {
     return BlocBuilder<GithubBloc, GithubState>(
       builder: (context, state) {
+        // Show loading for all non-loaded states
+        if (state is GithubLoading ||
+            state is GithubInitial ||
+            state is GithubAuthenticated) {
+          final message = state is GithubLoading ? state.message : 'Loading...';
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(height: 16),
+                Text(message),
+              ],
+            ),
+          );
+        }
+
         if (state is! GithubUserLoaded) {
           return const Center(
-            child: CircularProgressIndicator(),
+            child: Text('No data available'),
           );
         }
 

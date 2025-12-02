@@ -32,8 +32,14 @@ class _ReposPageState extends State<ReposPage> {
   Widget build(BuildContext context) {
     return BlocBuilder<GithubBloc, GithubState>(
       builder: (context, state) {
-        if (state is GithubLoading) {
-          return LoadingIndicator(message: state.message);
+        // Show loading for Initial, Authenticated, or Loading states
+        if (state is GithubLoading ||
+            state is GithubInitial ||
+            state is GithubAuthenticated) {
+          final message = state is GithubLoading
+              ? state.message
+              : 'Loading repositories...';
+          return LoadingIndicator(message: message);
         }
 
         if (state is GithubError) {

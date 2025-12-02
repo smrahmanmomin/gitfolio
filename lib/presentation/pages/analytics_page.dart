@@ -18,6 +18,38 @@ class AnalyticsPage extends StatelessWidget {
     return Scaffold(
       body: BlocBuilder<GithubBloc, GithubState>(
         builder: (context, state) {
+          // Show loading for all non-loaded states
+          if (state is GithubLoading ||
+              state is GithubInitial ||
+              state is GithubAuthenticated) {
+            final message =
+                state is GithubLoading ? state.message : 'Loading analytics...';
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(message),
+                ],
+              ),
+            );
+          }
+
+          if (state is GithubError) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.error_outline,
+                      size: 64, color: Theme.of(context).colorScheme.error),
+                  const SizedBox(height: 16),
+                  Text(state.message),
+                ],
+              ),
+            );
+          }
+
           if (state is! GithubUserLoaded) {
             return const Center(
               child: Text('No data available'),

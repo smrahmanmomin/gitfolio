@@ -58,9 +58,11 @@ class _SplashScreenState extends State<SplashScreen>
 
     final token = await TokenService.getToken();
 
+    if (!mounted) return;
+
     if (token != null && token.isNotEmpty) {
-      // Token exists, fetch user data (will navigate when loaded)
-      context.read<GithubBloc>().add(GithubFetchUser(token: token));
+      // Token exists, authenticate (will trigger user fetch)
+      context.read<GithubBloc>().add(GithubAuthenticate(token: token));
     } else {
       // No token, navigate to login
       if (!_hasNavigated && mounted) {
@@ -86,6 +88,7 @@ class _SplashScreenState extends State<SplashScreen>
             Navigator.of(context).pushReplacementNamed('/dashboard');
           } else if (state is GithubError && !_hasNavigated) {
             _hasNavigated = true;
+            TokenService.clearToken();
             // If error loading with saved token, go to login
             Navigator.of(context).pushReplacementNamed('/login');
           }

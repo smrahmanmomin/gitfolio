@@ -99,9 +99,11 @@ class GithubBloc extends Bloc<GithubEvent, GithubState> {
         );
       } else {
         emit(GithubUserLoaded(user: user, token: event.token));
-        // Auto-fetch repositories after user data loads
-        add(GithubFetchRepos(token: event.token));
       }
+
+      // Always refresh repositories and contribution data after user loads
+      add(GithubFetchRepos(token: event.token));
+      add(GithubFetchContributions(token: event.token));
     });
   }
 
@@ -116,8 +118,13 @@ class GithubBloc extends Bloc<GithubEvent, GithubState> {
     GithubFetchRepos event,
     Emitter<GithubState> emit,
   ) async {
-    // Don't show loading if we're appending (pagination)
-    if (!event.append) {
+    final startState = state;
+
+    final shouldShowGlobalLoading = !event.append &&
+        startState is! GithubUserLoaded &&
+        startState is! GithubReposLoaded;
+
+    if (shouldShowGlobalLoading) {
       emit(const GithubLoading(message: 'Loading repositories...'));
     }
 
@@ -130,39 +137,48 @@ class GithubBloc extends Bloc<GithubEvent, GithubState> {
     result.fold((failure) => emit(_mapFailureToError(failure)), (repos) {
       // Determine if there are more repos to load
       final hasMore = repos.length >= event.perPage;
+      final currentState = state;
 
-      if (state is GithubUserLoaded) {
-        // We have user data, update the state with repos
-        final currentState = state as GithubUserLoaded;
-        final List<RepositoryModel> updatedRepos = event.append
-            ? [...(currentState.repositories ?? []), ...repos]
-            : repos;
+      GithubUserLoaded? userState;
+      if (currentState is GithubUserLoaded) {
+        userState = currentState;
+      } else if (startState is GithubUserLoaded) {
+        userState = startState;
+      }
 
-        emit(
-          currentState.copyWith(
-            repositories: updatedRepos,
-            currentPage: event.page,
-            hasMoreRepos: hasMore,
-          ),
-        );
-      } else {
-        // No user data yet, emit repos-only state
-        final existingRepos = state is GithubReposLoaded
-            ? (state as GithubReposLoaded).repositories
-            : <RepositoryModel>[];
-
+      if (userState != null) {
+        final existingRepos = userState.repositories ?? <RepositoryModel>[];
         final updatedRepos =
             event.append ? [...existingRepos, ...repos] : repos;
 
         emit(
-          GithubReposLoaded(
+          userState.copyWith(
             repositories: updatedRepos,
             currentPage: event.page,
             hasMoreRepos: hasMore,
-            token: event.token,
           ),
         );
+        return;
       }
+
+      GithubReposLoaded? reposState;
+      if (currentState is GithubReposLoaded) {
+        reposState = currentState;
+      } else if (startState is GithubReposLoaded) {
+        reposState = startState;
+      }
+
+      final existingRepos = reposState?.repositories ?? <RepositoryModel>[];
+      final updatedRepos = event.append ? [...existingRepos, ...repos] : repos;
+
+      emit(
+        GithubReposLoaded(
+          repositories: updatedRepos,
+          currentPage: event.page,
+          hasMoreRepos: hasMore,
+          token: reposState?.token ?? event.token,
+        ),
+      );
     });
   }
 
@@ -176,26 +192,21 @@ class GithubBloc extends Bloc<GithubEvent, GithubState> {
     GithubFetchContributions event,
     Emitter<GithubState> emit,
   ) async {
-    emit(const GithubLoading(message: 'Loading contributions...'));
+    final startState = state;
+    if (startState is! GithubUserLoaded) {
+      return;
+    }
 
     final result = await repository.getContributions(event.token);
 
     result.fold((failure) => emit(_mapFailureToError(failure)), (
       contributions,
     ) {
-      if (state is GithubUserLoaded) {
-        // We have user data, update with contributions
-        final currentState = state as GithubUserLoaded;
-        emit(currentState.copyWith(contributions: contributions));
-      } else {
-        // Can't load contributions without user data
-        emit(
-          const GithubError(
-            message: 'User data must be loaded before contributions',
-            errorType: 'validation',
-          ),
-        );
-      }
+      final currentState = state;
+      final userState =
+          currentState is GithubUserLoaded ? currentState : startState;
+
+      emit(userState.copyWith(contributions: contributions));
     });
   }
 
