@@ -1,11 +1,14 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 
 import '../../data/models/github_user_model.dart';
 import '../../data/models/repository_model.dart';
 import '../constants/app_constants.dart';
+import '../models/chat_provider.dart';
+import 'web_llm_bridge.dart';
 
 /// Lightweight RAG service that uses embeddings + chat completions to answer
 /// repository-specific questions.
@@ -15,22 +18,35 @@ class ChatAssistantService {
 
   final http.Client _client;
 
-  static const _embeddingEndpoint = 'https://api.openai.com/v1/embeddings';
-  static const _chatEndpoint = 'https://api.openai.com/v1/chat/completions';
+  static const _openAiEmbeddingEndpoint =
+      'https://api.openai.com/v1/embeddings';
+  static const _openAiChatEndpoint =
+      'https://api.openai.com/v1/chat/completions';
 
   static final Map<String, List<double>> _embeddingCache = {};
 
   Future<String> askCopilot({
-    required String apiKey,
+    required ChatProvider provider,
     required String question,
     required List<RepositoryModel> repositories,
+    String? apiKey,
+    LocalLlmConfig? localConfig,
     GithubUserModel? user,
     String? selectedTemplateDescription,
   }) async {
-    if (apiKey.isEmpty) {
+    if (provider == ChatProvider.openAi && (apiKey == null || apiKey.isEmpty)) {
       throw const ChatAssistantException(
         'Missing OpenAI API key. Save it in Settings > AI Assistant first.',
       );
+    }
+
+    if (provider == ChatProvider.local) {
+      final requiresConfig = !(kIsWeb && WebLlmBridge.isSupported);
+      if (requiresConfig && (localConfig?.isComplete != true)) {
+        throw const ChatAssistantException(
+          'Missing local model settings. Save them in Settings > AI Assistant.',
+        );
+      }
     }
 
     final query = question.trim();
@@ -45,7 +61,9 @@ class ChatAssistantService {
     }
 
     final rankedContexts = await _rankRepositoryContexts(
+      provider: provider,
       apiKey: apiKey,
+      localConfig: localConfig,
       question: query,
       repositories: repositories,
     );
@@ -75,11 +93,18 @@ Provide a thoughtful answer referencing specific repositories and suggesting two
 ''';
 
     return _callChatCompletion(
-        apiKey: apiKey, systemPrompt: systemPrompt, userPrompt: userPrompt);
+      provider: provider,
+      apiKey: apiKey,
+      localConfig: localConfig,
+      systemPrompt: systemPrompt,
+      userPrompt: userPrompt,
+    );
   }
 
   Future<List<_RepoDocument>> _rankRepositoryContexts({
-    required String apiKey,
+    required ChatProvider provider,
+    String? apiKey,
+    LocalLlmConfig? localConfig,
     required String question,
     required List<RepositoryModel> repositories,
   }) async {
@@ -87,17 +112,28 @@ Provide a thoughtful answer referencing specific repositories and suggesting two
       ..sort((a, b) => b.stargazersCount.compareTo(a.stargazersCount));
     final topRepos = sorted.take(10).toList();
 
-    final questionEmbedding = await _embedText(apiKey, question);
+    final questionEmbedding = await _embedText(
+      provider: provider,
+      apiKey: apiKey,
+      localConfig: localConfig,
+      text: question,
+    );
     final docs = <_RepoDocument>[];
 
     for (final repo in topRepos) {
-      final cacheKey = '${repo.id}_${repo.updatedAt.toIso8601String()}';
+      final cacheKey =
+          '${provider.name}_${repo.id}_${repo.updatedAt.toIso8601String()}';
       final summary = _repoSummary(repo);
       List<double> repoEmbedding;
       if (_embeddingCache.containsKey(cacheKey)) {
         repoEmbedding = _embeddingCache[cacheKey]!;
       } else {
-        repoEmbedding = await _embedText(apiKey, summary);
+        repoEmbedding = await _embedText(
+          provider: provider,
+          apiKey: apiKey,
+          localConfig: localConfig,
+          text: summary,
+        );
         _embeddingCache[cacheKey] = repoEmbedding;
       }
 
@@ -109,9 +145,26 @@ Provide a thoughtful answer referencing specific repositories and suggesting two
     return docs;
   }
 
-  Future<List<double>> _embedText(String apiKey, String text) async {
+  Future<List<double>> _embedText({
+    required ChatProvider provider,
+    String? apiKey,
+    LocalLlmConfig? localConfig,
+    required String text,
+  }) async {
+    switch (provider) {
+      case ChatProvider.openAi:
+        return _embedWithOpenAi(apiKey!, text);
+      case ChatProvider.local:
+        if (kIsWeb && WebLlmBridge.isSupported) {
+          return _embedWithWebLocal(text);
+        }
+        return _embedWithLocal(localConfig!, text);
+    }
+  }
+
+  Future<List<double>> _embedWithOpenAi(String apiKey, String text) async {
     final response = await _client.post(
-      Uri.parse(_embeddingEndpoint),
+      Uri.parse(_openAiEmbeddingEndpoint),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $apiKey',
@@ -139,6 +192,49 @@ Provide a thoughtful answer referencing specific repositories and suggesting two
     return embedding;
   }
 
+  Future<List<double>> _embedWithLocal(
+    LocalLlmConfig config,
+    String text,
+  ) async {
+    final response = await _client.post(
+      config.embeddingUri,
+      headers: const {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'model': config.embeddingModel,
+        'prompt': text,
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw ChatAssistantException(
+        'Local embedding failed (${response.statusCode}): ${response.body}',
+      );
+    }
+
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final embedding = (decoded['embedding'] as List<dynamic>?)
+        ?.map((e) => (e as num).toDouble())
+        .toList();
+    if (embedding == null || embedding.isEmpty) {
+      throw const ChatAssistantException(
+        'Local embedding response missing data.',
+      );
+    }
+    return embedding;
+  }
+
+  Future<List<double>> _embedWithWebLocal(String text) async {
+    final embedding = await WebLlmBridge.embed(text);
+    if (embedding.isEmpty) {
+      throw const ChatAssistantException(
+        'Browser embedding response missing data.',
+      );
+    }
+    return embedding;
+  }
+
   double _cosineSimilarity(List<double> a, List<double> b) {
     final length = math.min(a.length, b.length);
     double dot = 0;
@@ -163,12 +259,30 @@ Provide a thoughtful answer referencing specific repositories and suggesting two
   }
 
   Future<String> _callChatCompletion({
-    required String apiKey,
+    required ChatProvider provider,
+    String? apiKey,
+    LocalLlmConfig? localConfig,
     required String systemPrompt,
     required String userPrompt,
   }) async {
+    switch (provider) {
+      case ChatProvider.openAi:
+        return _chatWithOpenAi(apiKey!, systemPrompt, userPrompt);
+      case ChatProvider.local:
+        if (kIsWeb && WebLlmBridge.isSupported) {
+          return _chatWithWebLocal(systemPrompt, userPrompt);
+        }
+        return _chatWithLocal(localConfig!, systemPrompt, userPrompt);
+    }
+  }
+
+  Future<String> _chatWithOpenAi(
+    String apiKey,
+    String systemPrompt,
+    String userPrompt,
+  ) async {
     final response = await _client.post(
-      Uri.parse(_chatEndpoint),
+      Uri.parse(_openAiChatEndpoint),
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer $apiKey',
@@ -197,6 +311,59 @@ Provide a thoughtful answer referencing specific repositories and suggesting two
     final message = choices.first['message'] as Map<String, dynamic>?;
     return (message?['content'] as String?)?.trim() ??
         'I could not generate a response. Please try again.';
+  }
+
+  Future<String> _chatWithLocal(
+    LocalLlmConfig config,
+    String systemPrompt,
+    String userPrompt,
+  ) async {
+    final response = await _client.post(
+      config.chatUri,
+      headers: const {
+        'Content-Type': 'application/json',
+      },
+      body: jsonEncode({
+        'model': config.chatModel,
+        'messages': [
+          {'role': 'system', 'content': systemPrompt},
+          {'role': 'user', 'content': userPrompt},
+        ],
+        'stream': false,
+        'options': {'temperature': 0.2},
+      }),
+    );
+
+    if (response.statusCode != 200) {
+      throw ChatAssistantException(
+        'Local chat failed (${response.statusCode}): ${response.body}',
+      );
+    }
+
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    final message = decoded['message'] as Map<String, dynamic>?;
+    final content = message?['content'] as String?;
+    if (content == null || content.trim().isEmpty) {
+      throw const ChatAssistantException(
+        'Local model did not return any text.',
+      );
+    }
+    return content.trim();
+  }
+
+  Future<String> _chatWithWebLocal(
+    String systemPrompt,
+    String userPrompt,
+  ) async {
+    final prompt = 'System instructions:\n$systemPrompt\n\n$userPrompt'
+        '\nAssistant:';
+    final response = await WebLlmBridge.generate(prompt);
+    if (response.isEmpty) {
+      throw const ChatAssistantException(
+        'Browser model did not return any text.',
+      );
+    }
+    return response.trim();
   }
 
   String _buildProfileSummary(

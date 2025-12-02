@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:http/http.dart' as http;
 
 import '../../core/constants/app_constants.dart';
+import '../../core/models/chat_provider.dart';
 import '../../core/services/chat_assistant_service.dart';
 import '../../data/models/github_user_model.dart';
 import '../../data/models/repository_model.dart';
@@ -53,6 +55,10 @@ class _ChatAssistantPageState extends State<ChatAssistantPage> {
     final templateDescription = settingsState.selectedTemplate != null
         ? SettingsCubit.templateDescription(settingsState.selectedTemplate!)
         : null;
+    final provider = settingsState.chatProvider;
+    final providerLabel = provider == ChatProvider.openAi
+        ? AppConstants.openAiChatModel
+        : (kIsWeb ? 'TinyLlama (browser)' : settingsState.localLlmModel);
 
     final readinessBanner = _buildReadinessBanner(settingsState, githubState);
 
@@ -63,7 +69,7 @@ class _ChatAssistantPageState extends State<ChatAssistantPage> {
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: Tooltip(
-              message: 'Powered by ${AppConstants.openAiChatModel}',
+              message: 'Powered by $providerLabel',
               child: const Icon(Icons.bolt_outlined),
             ),
           ),
@@ -97,17 +103,23 @@ class _ChatAssistantPageState extends State<ChatAssistantPage> {
   }
 
   Widget _buildEmptyState(SettingsState settingsState) {
-    final hasKey = settingsState.hasOpenAiKey;
-    final text = hasKey
+    final text = settingsState.isAssistantReady
         ? 'Ask a question about your GitHub work to get started.'
-        : 'Add your OpenAI API key in Settings to enable Copilot.';
+        : settingsState.chatProvider == ChatProvider.openAi
+            ? 'Add your OpenAI API key in Settings to enable Copilot.'
+            : 'Save your local LLM settings in Settings before chatting.';
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(AppConstants.largePadding),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(hasKey ? Icons.question_answer : Icons.key_off, size: 56),
+            Icon(
+              settingsState.isAssistantReady
+                  ? Icons.question_answer
+                  : Icons.memory_outlined,
+              size: 56,
+            ),
             const SizedBox(height: 16),
             Text(
               text,
@@ -127,7 +139,7 @@ class _ChatAssistantPageState extends State<ChatAssistantPage> {
     required String? templateDescription,
   }) {
     final canSend =
-        settingsState.hasOpenAiKey && repos.isNotEmpty && !_isSending;
+        settingsState.isAssistantReady && repos.isNotEmpty && !_isSending;
 
     return SafeArea(
       top: false,
@@ -142,9 +154,11 @@ class _ChatAssistantPageState extends State<ChatAssistantPage> {
                 maxLines: 4,
                 textInputAction: TextInputAction.newline,
                 decoration: InputDecoration(
-                  hintText: settingsState.hasOpenAiKey
+                  hintText: settingsState.isAssistantReady
                       ? 'Ask about your repos, roadmap, or projects'
-                      : 'Save an API key in Settings to start chatting',
+                      : settingsState.chatProvider == ChatProvider.openAi
+                          ? 'Save an API key in Settings to start chatting'
+                          : 'Configure your local LLM in Settings first',
                 ),
               ),
             ),
@@ -176,11 +190,13 @@ class _ChatAssistantPageState extends State<ChatAssistantPage> {
     SettingsState settingsState,
     GithubState githubState,
   ) {
-    if (!settingsState.hasOpenAiKey) {
+    if (!settingsState.isAssistantReady) {
+      final message = settingsState.chatProvider == ChatProvider.openAi
+          ? 'Add your OpenAI API key in Settings > AI Assistant to enable Copilot.'
+          : 'Save your local LLM URL and models in Settings to enable Copilot.';
       return _InfoBanner(
-        icon: Icons.key_off,
-        message:
-            'Add your OpenAI API key in Settings > AI Assistant to enable Copilot.',
+        icon: Icons.router_outlined,
+        message: message,
         actionLabel: 'Open Settings',
         onPressed: () => Navigator.of(context).pop(),
       );
@@ -230,7 +246,9 @@ class _ChatAssistantPageState extends State<ChatAssistantPage> {
 
     try {
       final response = await _assistantService.askCopilot(
-        apiKey: settingsState.openAiApiKey!,
+        provider: settingsState.chatProvider,
+        apiKey: settingsState.openAiApiKey,
+        localConfig: settingsState.localLlmConfig,
         question: query,
         repositories: repos,
         user: user,

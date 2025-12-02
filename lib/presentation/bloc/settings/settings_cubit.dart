@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/models/chat_provider.dart';
 import '../../../domain/entities/portfolio_template.dart';
 import 'settings_state.dart';
 
@@ -32,6 +33,16 @@ class SettingsCubit extends Cubit<SettingsState> {
             prefs.getBool(AppConstants.notifyPullRequestsKey) ?? false,
         selectedTemplateId: prefs.getString(AppConstants.selectedTemplateKey),
         openAiApiKey: prefs.getString(AppConstants.openAiApiKeyKey),
+        chatProvider: _providerFromString(
+          prefs.getString(AppConstants.chatProviderKey),
+        ),
+        localLlmBaseUrl: prefs.getString(AppConstants.localLlmBaseUrlKey) ??
+            AppConstants.defaultLocalLlmBaseUrl,
+        localLlmModel: prefs.getString(AppConstants.localLlmModelKey) ??
+            AppConstants.defaultLocalLlmChatModel,
+        localLlmEmbeddingModel:
+            prefs.getString(AppConstants.localLlmEmbeddingModelKey) ??
+                AppConstants.defaultLocalLlmEmbeddingModel,
         isInitialized: true,
       ),
     );
@@ -92,6 +103,52 @@ class SettingsCubit extends Cubit<SettingsState> {
     }
     await prefs.setString(AppConstants.openAiApiKeyKey, trimmed);
     emit(state.copyWith(openAiApiKey: trimmed));
+  }
+
+  Future<void> setChatProvider(ChatProvider provider) async {
+    final prefs = await _preferences;
+    await prefs.setString(AppConstants.chatProviderKey, provider.name);
+    emit(state.copyWith(chatProvider: provider));
+  }
+
+  Future<void> saveLocalLlmConfig({
+    required String baseUrl,
+    required String chatModel,
+    required String embeddingModel,
+  }) async {
+    final prefs = await _preferences;
+    final normalizedBaseUrl = baseUrl.trim().isEmpty
+        ? AppConstants.defaultLocalLlmBaseUrl
+        : baseUrl.trim();
+    final normalizedChatModel = chatModel.trim().isEmpty
+        ? AppConstants.defaultLocalLlmChatModel
+        : chatModel.trim();
+    final normalizedEmbeddingModel = embeddingModel.trim().isEmpty
+        ? AppConstants.defaultLocalLlmEmbeddingModel
+        : embeddingModel.trim();
+
+    await prefs.setString(AppConstants.localLlmBaseUrlKey, normalizedBaseUrl);
+    await prefs.setString(AppConstants.localLlmModelKey, normalizedChatModel);
+    await prefs.setString(
+      AppConstants.localLlmEmbeddingModelKey,
+      normalizedEmbeddingModel,
+    );
+
+    emit(
+      state.copyWith(
+        localLlmBaseUrl: normalizedBaseUrl,
+        localLlmModel: normalizedChatModel,
+        localLlmEmbeddingModel: normalizedEmbeddingModel,
+      ),
+    );
+  }
+
+  ChatProvider _providerFromString(String? value) {
+    if (value == null) return ChatProvider.local;
+    return ChatProvider.values.firstWhere(
+      (provider) => provider.name == value,
+      orElse: () => ChatProvider.local,
+    );
   }
 
   ThemeMode _themeFromString(String? value) {

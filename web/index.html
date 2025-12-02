@@ -152,6 +152,64 @@
       });
     }
   </script>
+  <script type="module">
+    import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.13.2';
+
+    const textGeneratorPromise = pipeline(
+      'text-generation',
+      'Xenova/TinyLlama-1.1B-Chat-v1.0',
+      {
+        quantized: true,
+        dtype: 'q4',
+      },
+    );
+
+    const embedderPromise = pipeline(
+      'feature-extraction',
+      'Xenova/all-MiniLM-L6-v2',
+      {
+        quantized: true,
+        dtype: 'q8',
+      },
+    );
+
+    const toArray = (tensor) => {
+      if (!tensor) return [];
+      if (Array.isArray(tensor)) return tensor;
+      if (tensor.data) return Array.from(tensor.data);
+      if (typeof tensor.tolist === 'function') return tensor.tolist();
+      return [];
+    };
+
+    window.gitfolioLlm = {
+      isReady: false,
+      async _ensureReady() {
+        if (this.isReady) return;
+        await Promise.all([textGeneratorPromise, embedderPromise]);
+        this.isReady = true;
+      },
+      async generate(prompt) {
+        await this._ensureReady();
+        const generator = await textGeneratorPromise;
+        const output = await generator(prompt, {
+          max_new_tokens: 256,
+          temperature: 0.4,
+          top_p: 0.9,
+          repetition_penalty: 1.1,
+        });
+        return output?.[0]?.generated_text ?? '';
+      },
+      async embed(text) {
+        await this._ensureReady();
+        const embedder = await embedderPromise;
+        const tensor = await embedder(text, {
+          pooling: 'mean',
+          normalize: true,
+        });
+        return toArray(tensor);
+      },
+    };
+  </script>
 </head>
 <body>
   <!-- Loading screen -->

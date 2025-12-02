@@ -1,8 +1,10 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../core/constants/app_constants.dart';
+import '../../core/models/chat_provider.dart';
 import '../../core/services/token_service.dart';
 import '../bloc/github/github_bloc.dart';
 import '../bloc/github/github_event.dart';
@@ -21,7 +23,13 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   final TextEditingController _apiKeyController = TextEditingController();
+  final TextEditingController _localBaseUrlController = TextEditingController();
+  final TextEditingController _localChatModelController =
+      TextEditingController();
+  final TextEditingController _localEmbeddingModelController =
+      TextEditingController();
   bool _apiKeySynced = false;
+  bool _localConfigSynced = false;
   bool _isApiKeyObscured = true;
 
   @override
@@ -32,12 +40,32 @@ class _SettingsPageState extends State<SettingsPage> {
       _apiKeyController.text = state.openAiApiKey ?? '';
       _apiKeySynced = true;
     }
+    if (!_localConfigSynced) {
+      final state = context.read<SettingsCubit>().state;
+      _syncLocalControllers(state);
+      _localConfigSynced = true;
+    }
   }
 
   @override
   void dispose() {
     _apiKeyController.dispose();
+    _localBaseUrlController.dispose();
+    _localChatModelController.dispose();
+    _localEmbeddingModelController.dispose();
     super.dispose();
+  }
+
+  void _syncLocalControllers(SettingsState state) {
+    if (_localBaseUrlController.text != state.localLlmBaseUrl) {
+      _localBaseUrlController.text = state.localLlmBaseUrl;
+    }
+    if (_localChatModelController.text != state.localLlmModel) {
+      _localChatModelController.text = state.localLlmModel;
+    }
+    if (_localEmbeddingModelController.text != state.localLlmEmbeddingModel) {
+      _localEmbeddingModelController.text = state.localLlmEmbeddingModel;
+    }
   }
 
   @override
@@ -46,15 +74,27 @@ class _SettingsPageState extends State<SettingsPage> {
       appBar: AppBar(
         title: const Text('Settings'),
       ),
-      body: BlocListener<SettingsCubit, SettingsState>(
-        listenWhen: (previous, current) =>
-            previous.openAiApiKey != current.openAiApiKey,
-        listener: (context, state) {
-          final nextValue = state.openAiApiKey ?? '';
-          if (_apiKeyController.text != nextValue) {
-            _apiKeyController.text = nextValue;
-          }
-        },
+      body: MultiBlocListener(
+        listeners: [
+          BlocListener<SettingsCubit, SettingsState>(
+            listenWhen: (previous, current) =>
+                previous.openAiApiKey != current.openAiApiKey,
+            listener: (context, state) {
+              final nextValue = state.openAiApiKey ?? '';
+              if (_apiKeyController.text != nextValue) {
+                _apiKeyController.text = nextValue;
+              }
+            },
+          ),
+          BlocListener<SettingsCubit, SettingsState>(
+            listenWhen: (previous, current) =>
+                previous.localLlmBaseUrl != current.localLlmBaseUrl ||
+                previous.localLlmModel != current.localLlmModel ||
+                previous.localLlmEmbeddingModel !=
+                    current.localLlmEmbeddingModel,
+            listener: (context, state) => _syncLocalControllers(state),
+          ),
+        ],
         child: BlocBuilder<SettingsCubit, SettingsState>(
           builder: (context, settingsState) {
             return BlocBuilder<GithubBloc, GithubState>(
@@ -319,7 +359,13 @@ class _SettingsPageState extends State<SettingsPage> {
     BuildContext context,
     SettingsState settingsState,
   ) {
-    final hasKey = settingsState.hasOpenAiKey;
+    final isReady = settingsState.isAssistantReady;
+    final provider = settingsState.chatProvider;
+    final showLocalServerFields = provider == ChatProvider.local && !kIsWeb;
+    final helperText = provider == ChatProvider.local && kIsWeb
+        ? 'Runs fully in the browser using TinyLlama and all-MiniLM so it '
+            'keeps working on GitHub Pages without any API keys.'
+        : provider.helper;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(AppConstants.defaultPadding),
@@ -335,45 +381,164 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Connect your OpenAI-compatible API key to unlock the RAG chatbot '
-              'that can answer repo questions and suggest new project ideas.',
+              'Choose between a hosted API (OpenAI-compatible) or a local LLM '
+              'to power the Copilot chatbot. Local mode can run fully '
+              'offline in your browser on GitHub Pages, or talk to Ollama / '
+              'llama.cpp running on your machine.',
               style: Theme.of(context)
                   .textTheme
                   .bodySmall
                   ?.copyWith(color: Theme.of(context).colorScheme.onSurface),
             ),
             const SizedBox(height: AppConstants.defaultPadding),
-            TextFormField(
-              controller: _apiKeyController,
-              obscureText: _isApiKeyObscured,
-              decoration: InputDecoration(
-                labelText: 'OpenAI API Key',
-                hintText: 'sk-xxxx',
-                prefixIcon: const Icon(Icons.vpn_key),
-                suffixIcon: IconButton(
-                  icon: Icon(_isApiKeyObscured
-                      ? Icons.visibility
-                      : Icons.visibility_off),
-                  onPressed: () {
-                    setState(() => _isApiKeyObscured = !_isApiKeyObscured);
-                  },
+            Row(
+              children: [
+                const Icon(Icons.hub_outlined),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: DropdownButtonFormField<ChatProvider>(
+                    initialValue: provider,
+                    decoration: const InputDecoration(
+                      labelText: 'Assistant Provider',
+                    ),
+                    items: ChatProvider.values
+                        .map(
+                          (option) => DropdownMenuItem(
+                            value: option,
+                            child: Text(option.label),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        context.read<SettingsCubit>().setChatProvider(value);
+                      }
+                    },
+                  ),
                 ),
-              ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Text(
+              helperText,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: Theme.of(context).hintColor),
             ),
             const SizedBox(height: AppConstants.defaultPadding),
+            if (provider == ChatProvider.openAi) ...[
+              TextFormField(
+                controller: _apiKeyController,
+                obscureText: _isApiKeyObscured,
+                decoration: InputDecoration(
+                  labelText: 'OpenAI API Key',
+                  hintText: 'sk-xxxx',
+                  prefixIcon: const Icon(Icons.vpn_key),
+                  suffixIcon: IconButton(
+                    icon: Icon(_isApiKeyObscured
+                        ? Icons.visibility
+                        : Icons.visibility_off),
+                    onPressed: () {
+                      setState(() => _isApiKeyObscured = !_isApiKeyObscured);
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppConstants.defaultPadding),
+            ] else if (showLocalServerFields) ...[
+              TextFormField(
+                controller: _localBaseUrlController,
+                decoration: const InputDecoration(
+                  labelText: 'Local server URL',
+                  hintText: 'http://127.0.0.1:11434',
+                  prefixIcon: Icon(Icons.lan_outlined),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _localChatModelController,
+                decoration: const InputDecoration(
+                  labelText: 'Chat model',
+                  hintText: 'llama3.1:8b',
+                  prefixIcon: Icon(Icons.smart_toy_outlined),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _localEmbeddingModelController,
+                decoration: const InputDecoration(
+                  labelText: 'Embedding model',
+                  hintText: 'nomic-embed-text',
+                  prefixIcon: Icon(Icons.blur_on_outlined),
+                ),
+              ),
+              const SizedBox(height: AppConstants.defaultPadding),
+              Text(
+                'Tip: run `ollama pull llama3.1` and `ollama pull nomic-embed-text`, '
+                'then start Ollama so GitFolio can talk to it.',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              const SizedBox(height: AppConstants.defaultPadding),
+            ] else ...[
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.bolt, color: Colors.amber),
+                title: const Text('Browser LLM ready'),
+                subtitle: const Text(
+                  'TinyLlama (1.1B) + MiniLM embeddings run entirely in-browser. '
+                  'Expect a short download the first time you open Copilot.',
+                ),
+              ),
+              const SizedBox(height: AppConstants.defaultPadding),
+            ],
             Row(
               children: [
                 Expanded(
                   child: FilledButton.icon(
                     icon: const Icon(Icons.save_outlined),
-                    label: const Text('Save API Key'),
+                    label: Text(
+                      provider == ChatProvider.openAi
+                          ? 'Save API Key'
+                          : showLocalServerFields
+                              ? 'Save Local Config'
+                              : 'Prime Browser Model',
+                    ),
                     onPressed: () async {
-                      await context
-                          .read<SettingsCubit>()
-                          .saveOpenAiKey(_apiKeyController.text);
+                      if (provider == ChatProvider.openAi) {
+                        await context
+                            .read<SettingsCubit>()
+                            .saveOpenAiKey(_apiKeyController.text);
+                      } else if (showLocalServerFields) {
+                        await context.read<SettingsCubit>().saveLocalLlmConfig(
+                              baseUrl: _localBaseUrlController.text,
+                              chatModel: _localChatModelController.text,
+                              embeddingModel:
+                                  _localEmbeddingModelController.text,
+                            );
+                      } else {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'The browser model downloads automatically '
+                              'the first time you open Copilot.',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
                       if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('Assistant key saved')),
+                        SnackBar(
+                          content: Text(
+                            provider == ChatProvider.openAi
+                                ? 'Assistant key saved'
+                                : showLocalServerFields
+                                    ? 'Local model settings saved'
+                                    : 'Browser model primed',
+                          ),
+                        ),
                       );
                     },
                   ),
@@ -382,8 +547,8 @@ class _SettingsPageState extends State<SettingsPage> {
                 Expanded(
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.smart_toy_outlined),
-                    label: Text(hasKey ? 'Open Copilot' : 'Add key first'),
-                    onPressed: hasKey
+                    label: Text(isReady ? 'Open Copilot' : 'Complete setup'),
+                    onPressed: isReady
                         ? () {
                             Navigator.of(context).push(
                               MaterialPageRoute(

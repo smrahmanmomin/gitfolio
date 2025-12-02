@@ -100,6 +100,19 @@ class AppConstants {
   /// Key for persisting the AI assistant provider API key
   static const String openAiApiKeyKey = 'settings_openai_api_key';
 
+  /// Key for persisting the selected assistant provider
+  static const String chatProviderKey = 'settings_chat_provider';
+
+  /// Key for storing the local LLM endpoint base URL
+  static const String localLlmBaseUrlKey = 'settings_local_llm_base_url';
+
+  /// Key for storing the local chat model identifier
+  static const String localLlmModelKey = 'settings_local_llm_model';
+
+  /// Key for storing the local embedding model identifier
+  static const String localLlmEmbeddingModelKey =
+      'settings_local_llm_embedding_model';
+
   // ==================== Cache Duration ====================
 
   /// Duration to cache user profile data
@@ -134,6 +147,15 @@ class AppConstants {
 
   /// Default chat completion model used by the AI assistant
   static const String openAiChatModel = 'gpt-4o-mini';
+
+  /// Default base URL for a local Ollama/llama.cpp server
+  static const String defaultLocalLlmBaseUrl = 'http://127.0.0.1:11434';
+
+  /// Default chat model to use on a local server
+  static const String defaultLocalLlmChatModel = 'llama3.1:8b';
+
+  /// Default embedding model to use on a local server
+  static const String defaultLocalLlmEmbeddingModel = 'nomic-embed-text';
 
   // ==================== UI Constants ====================
 
