@@ -4,6 +4,7 @@ import '../../core/constants/app_constants.dart';
 import '../../domain/entities/portfolio_template.dart';
 import '../bloc/github/github_bloc.dart';
 import '../bloc/github/github_state.dart';
+import '../bloc/settings/settings_cubit.dart';
 
 /// Portfolio page for managing and previewing portfolio templates.
 class PortfolioPage extends StatefulWidget {
@@ -14,8 +15,6 @@ class PortfolioPage extends StatefulWidget {
 }
 
 class _PortfolioPageState extends State<PortfolioPage> {
-  PortfolioTemplate? _selectedTemplate;
-
   final List<PortfolioTemplate> _templates = [
     PortfolioTemplates.modernDeveloper,
     PortfolioTemplates.creativePortfolio,
@@ -49,6 +48,9 @@ class _PortfolioPageState extends State<PortfolioPage> {
           );
         }
 
+        final settingsState = context.watch<SettingsCubit>().state;
+        final selectedTemplate = settingsState.selectedTemplate;
+
         return SingleChildScrollView(
           padding: const EdgeInsets.all(AppConstants.defaultPadding),
           child: Column(
@@ -74,7 +76,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
               const SizedBox(height: 24),
 
               // Current Selection
-              if (_selectedTemplate != null) ...[
+              if (selectedTemplate != null) ...[
                 Card(
                   color: Theme.of(context).colorScheme.primaryContainer,
                   child: Padding(
@@ -103,7 +105,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
                                     ),
                               ),
                               Text(
-                                _selectedTemplate!.name,
+                                selectedTemplate.name,
                                 style: Theme.of(context)
                                     .textTheme
                                     .titleLarge
@@ -119,7 +121,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
                         ),
                         OutlinedButton.icon(
                           onPressed: () =>
-                              _showTemplatePreview(context, _selectedTemplate!),
+                              _showTemplatePreview(context, selectedTemplate),
                           icon: const Icon(Icons.visibility),
                           label: const Text('Preview'),
                         ),
@@ -145,7 +147,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
                 itemCount: _templates.length,
                 itemBuilder: (context, index) {
                   final template = _templates[index];
-                  final isSelected = _selectedTemplate?.id == template.id;
+                  final isSelected = selectedTemplate?.id == template.id;
                   return _buildTemplateCard(context, template, isSelected);
                 },
               ),
@@ -176,7 +178,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
             : BorderSide.none,
       ),
       child: InkWell(
-        onTap: () => setState(() => _selectedTemplate = template),
+        onTap: () => _handleTemplateSelection(context, template),
         borderRadius: BorderRadius.circular(12),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -261,16 +263,8 @@ class _PortfolioPageState extends State<PortfolioPage> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: FilledButton(
-                          onPressed: () {
-                            setState(() => _selectedTemplate = template);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content:
-                                    Text('${template.name} template selected'),
-                                duration: const Duration(seconds: 2),
-                              ),
-                            );
-                          },
+                          onPressed: () =>
+                              _handleTemplateSelection(context, template),
                           child: const Text('Select'),
                         ),
                       ),
@@ -438,12 +432,7 @@ class _PortfolioPageState extends State<PortfolioPage> {
                   FilledButton.icon(
                     onPressed: () {
                       Navigator.pop(context);
-                      setState(() => _selectedTemplate = template);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text('${template.name} template selected'),
-                        ),
-                      );
+                      _handleTemplateSelection(context, template);
                     },
                     icon: const Icon(Icons.check),
                     label: const Text('Use Template'),
@@ -467,5 +456,15 @@ class _PortfolioPageState extends State<PortfolioPage> {
         .split('_')
         .map((w) => w[0].toUpperCase() + w.substring(1))
         .join(' ');
+  }
+
+  void _handleTemplateSelection(
+    BuildContext context,
+    PortfolioTemplate template,
+  ) {
+    context.read<SettingsCubit>().selectTemplate(template.id);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${template.name} template applied')),
+    );
   }
 }

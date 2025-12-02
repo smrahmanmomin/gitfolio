@@ -10,6 +10,7 @@ import 'repos_page.dart';
 import 'analytics_page.dart';
 import 'portfolio_page.dart';
 import 'settings_page.dart';
+import 'chat_assistant_page.dart';
 
 /// Main dashboard with tab navigation.
 ///
@@ -29,6 +30,7 @@ class _DashboardPageState extends State<DashboardPage> {
     const ReposPage(),
     const AnalyticsPage(),
     const PortfolioPage(),
+    const ChatAssistantPage(),
   ];
 
   @override
@@ -125,6 +127,11 @@ class _DashboardPageState extends State<DashboardPage> {
               icon: Icon(Icons.web_outlined),
               selectedIcon: Icon(Icons.web),
               label: 'Portfolio',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.smart_toy_outlined),
+              selectedIcon: Icon(Icons.smart_toy),
+              label: 'Copilot',
             ),
           ],
         ),

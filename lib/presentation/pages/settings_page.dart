@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../../core/constants/app_constants.dart';
 import '../../core/services/token_service.dart';
 import '../bloc/github/github_bloc.dart';
 import '../bloc/github/github_event.dart';
 import '../bloc/github/github_state.dart';
+import '../bloc/settings/settings_cubit.dart';
+import '../bloc/settings/settings_state.dart';
+import 'chat_assistant_page.dart';
 
 /// Settings page for app configuration.
 class SettingsPage extends StatefulWidget {
@@ -15,182 +20,232 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
+  final TextEditingController _apiKeyController = TextEditingController();
+  bool _apiKeySynced = false;
+  bool _isApiKeyObscured = true;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_apiKeySynced) {
+      final state = context.read<SettingsCubit>().state;
+      _apiKeyController.text = state.openAiApiKey ?? '';
+      _apiKeySynced = true;
+    }
+  }
+
+  @override
+  void dispose() {
+    _apiKeyController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Settings'),
       ),
-      body: BlocBuilder<GithubBloc, GithubState>(
-        builder: (context, state) {
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(AppConstants.defaultPadding),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Appearance Section
-                _buildSectionHeader(context, 'Appearance'),
-                Card(
-                  child: Column(
-                    children: [
-                      _buildThemeTile(context),
-                      const Divider(height: 1),
-                      _buildCompactModeTile(context),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Notifications Section
-                _buildSectionHeader(context, 'Notifications'),
-                Card(
-                  child: Column(
-                    children: [
-                      _buildNotificationTile(
-                        context,
-                        'New Followers',
-                        'Get notified when someone follows you',
-                        true,
-                      ),
-                      const Divider(height: 1),
-                      _buildNotificationTile(
-                        context,
-                        'Repository Stars',
-                        'Get notified about new stars on your repos',
-                        true,
-                      ),
-                      const Divider(height: 1),
-                      _buildNotificationTile(
-                        context,
-                        'Pull Requests',
-                        'Get notified about pull request activity',
-                        false,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Account Section
-                if (state is GithubUserLoaded) ...[
-                  _buildSectionHeader(context, 'Account'),
-                  Card(
-                    child: Column(
-                      children: [
-                        ListTile(
-                          leading: CircleAvatar(
-                            backgroundImage: NetworkImage(state.user.avatarUrl),
-                          ),
-                          title: Text(state.user.name ?? state.user.login),
-                          subtitle: Text(state.user.email ?? state.user.login),
-                        ),
-                        const Divider(height: 1),
-                        ListTile(
-                          leading: const Icon(Icons.info_outline),
-                          title: const Text('Token Info'),
-                          subtitle: FutureBuilder<int?>(
-                            future: TokenService.getTokenAgeDays(),
-                            builder: (context, snapshot) {
-                              if (snapshot.hasData && snapshot.data != null) {
-                                return Text('Saved ${snapshot.data} days ago');
-                              }
-                              return const Text('Token saved locally');
-                            },
-                          ),
-                        ),
-                        const Divider(height: 1),
-                        ListTile(
-                          leading: Icon(Icons.logout,
-                              color: Theme.of(context).colorScheme.error),
-                          title: Text(
-                            'Logout',
-                            style: TextStyle(
-                                color: Theme.of(context).colorScheme.error),
-                          ),
-                          onTap: () => _showLogoutDialog(context),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                ],
-
-                // Data & Storage Section
-                _buildSectionHeader(context, 'Data & Storage'),
-                Card(
-                  child: Column(
-                    children: [
-                      ListTile(
-                        leading: const Icon(Icons.refresh),
-                        title: const Text('Refresh Data'),
-                        subtitle: const Text('Reload all GitHub data'),
-                        onTap: () {
-                          if (state is GithubUserLoaded) {
-                            context.read<GithubBloc>().add(
-                                  GithubRefreshData(token: state.token),
-                                );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('Refreshing data...')),
-                            );
-                          }
-                        },
-                      ),
-                      const Divider(height: 1),
-                      ListTile(
-                        leading: const Icon(Icons.delete_outline),
-                        title: const Text('Clear Cache'),
-                        subtitle: const Text('Clear locally cached data'),
-                        onTap: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Cache cleared')),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // About Section
-                _buildSectionHeader(context, 'About'),
-                Card(
-                  child: Column(
-                    children: [
-                      const ListTile(
-                        leading: Icon(Icons.info_outline),
-                        title: Text('Version'),
-                        subtitle: Text('1.0.0'),
-                      ),
-                      const Divider(height: 1),
-                      ListTile(
-                        leading: const Icon(Icons.code),
-                        title: const Text('Source Code'),
-                        subtitle: const Text('View on GitHub'),
-                        trailing: const Icon(Icons.open_in_new, size: 20),
-                        onTap: () {},
-                      ),
-                      const Divider(height: 1),
-                      ListTile(
-                        leading: const Icon(Icons.gavel),
-                        title: const Text('Licenses'),
-                        trailing: const Icon(Icons.chevron_right),
-                        onTap: () {
-                          showLicensePage(
-                            context: context,
-                            applicationName: AppConstants.appName,
-                            applicationVersion: '1.0.0',
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
-            ),
-          );
+      body: BlocListener<SettingsCubit, SettingsState>(
+        listenWhen: (previous, current) =>
+            previous.openAiApiKey != current.openAiApiKey,
+        listener: (context, state) {
+          final nextValue = state.openAiApiKey ?? '';
+          if (_apiKeyController.text != nextValue) {
+            _apiKeyController.text = nextValue;
+          }
         },
+        child: BlocBuilder<SettingsCubit, SettingsState>(
+          builder: (context, settingsState) {
+            return BlocBuilder<GithubBloc, GithubState>(
+              builder: (context, githubState) {
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(AppConstants.defaultPadding),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildSectionHeader(context, 'Appearance'),
+                      Card(
+                        child: Column(
+                          children: [
+                            _buildThemeTile(context, settingsState),
+                            const Divider(height: 1),
+                            _buildCompactModeTile(context, settingsState),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      _buildSectionHeader(context, 'Notifications'),
+                      Card(
+                        child: Column(
+                          children: [
+                            _buildNotificationTile(
+                              context,
+                              'New Followers',
+                              'Get notified when someone follows you',
+                              settingsState.notifyFollowers,
+                              (value) => context
+                                  .read<SettingsCubit>()
+                                  .setNotificationPreference(
+                                    followers: value,
+                                  ),
+                            ),
+                            const Divider(height: 1),
+                            _buildNotificationTile(
+                              context,
+                              'Repository Stars',
+                              'Get notified about new stars on your repos',
+                              settingsState.notifyStars,
+                              (value) => context
+                                  .read<SettingsCubit>()
+                                  .setNotificationPreference(stars: value),
+                            ),
+                            const Divider(height: 1),
+                            _buildNotificationTile(
+                              context,
+                              'Pull Requests',
+                              'Get notified about pull request activity',
+                              settingsState.notifyPullRequests,
+                              (value) => context
+                                  .read<SettingsCubit>()
+                                  .setNotificationPreference(
+                                    pullRequests: value,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      _buildSectionHeader(context, 'AI Assistant'),
+                      _buildAiAssistantCard(context, settingsState),
+                      const SizedBox(height: 24),
+                      if (githubState is GithubUserLoaded) ...[
+                        _buildSectionHeader(context, 'Account'),
+                        Card(
+                          child: Column(
+                            children: [
+                              ListTile(
+                                leading: CircleAvatar(
+                                  backgroundImage:
+                                      NetworkImage(githubState.user.avatarUrl),
+                                ),
+                                title: Text(githubState.user.name ??
+                                    githubState.user.login),
+                                subtitle: Text(githubState.user.email ??
+                                    githubState.user.login),
+                              ),
+                              const Divider(height: 1),
+                              ListTile(
+                                leading: const Icon(Icons.info_outline),
+                                title: const Text('Token Info'),
+                                subtitle: FutureBuilder<int?>(
+                                  future: TokenService.getTokenAgeDays(),
+                                  builder: (context, snapshot) {
+                                    if (snapshot.hasData &&
+                                        snapshot.data != null) {
+                                      return Text(
+                                          'Saved ${snapshot.data} days ago');
+                                    }
+                                    return const Text('Token saved locally');
+                                  },
+                                ),
+                              ),
+                              const Divider(height: 1),
+                              ListTile(
+                                leading: Icon(Icons.logout,
+                                    color: Theme.of(context).colorScheme.error),
+                                title: Text(
+                                  'Logout',
+                                  style: TextStyle(
+                                      color:
+                                          Theme.of(context).colorScheme.error),
+                                ),
+                                onTap: () => _showLogoutDialog(context),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+                      _buildSectionHeader(context, 'Data & Storage'),
+                      Card(
+                        child: Column(
+                          children: [
+                            ListTile(
+                              leading: const Icon(Icons.refresh),
+                              title: const Text('Refresh Data'),
+                              subtitle: const Text('Reload all GitHub data'),
+                              onTap: () {
+                                if (githubState is GithubUserLoaded) {
+                                  context.read<GithubBloc>().add(
+                                        GithubRefreshData(
+                                            token: githubState.token),
+                                      );
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                        content: Text('Refreshing data...')),
+                                  );
+                                }
+                              },
+                            ),
+                            const Divider(height: 1),
+                            ListTile(
+                              leading: const Icon(Icons.delete_outline),
+                              title: const Text('Clear Cache'),
+                              subtitle: const Text('Clear locally cached data'),
+                              onTap: () {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                      content: Text('Cache cleared locally')),
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      _buildSectionHeader(context, 'About'),
+                      Card(
+                        child: Column(
+                          children: [
+                            const ListTile(
+                              leading: Icon(Icons.info_outline),
+                              title: Text('Version'),
+                              subtitle: Text('1.0.0'),
+                            ),
+                            const Divider(height: 1),
+                            ListTile(
+                              leading: const Icon(Icons.code),
+                              title: const Text('Source Code'),
+                              subtitle: const Text('View on GitHub'),
+                              trailing: const Icon(Icons.open_in_new, size: 20),
+                              onTap: () => _launchExternal(
+                                  context, AppConstants.sourceCodeUrl),
+                            ),
+                            const Divider(height: 1),
+                            ListTile(
+                              leading: const Icon(Icons.gavel),
+                              title: const Text('Licenses'),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () {
+                                showLicensePage(
+                                  context: context,
+                                  applicationName: AppConstants.appName,
+                                  applicationVersion: '1.0.0',
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }
@@ -208,30 +263,39 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildThemeTile(BuildContext context) {
-    final brightness = Theme.of(context).brightness;
-    final isDark = brightness == Brightness.dark;
-
+  Widget _buildThemeTile(BuildContext context, SettingsState settingsState) {
     return ListTile(
       leading: const Icon(Icons.brightness_6),
       title: const Text('Theme'),
-      subtitle: Text(isDark ? 'Dark' : 'Light'),
-      trailing: const Text('System default'),
+      subtitle: Text(SettingsCubit.themeLabel(settingsState.themeMode)),
+      trailing: DropdownButton<ThemeMode>(
+        value: settingsState.themeMode,
+        items: ThemeMode.values
+            .map(
+              (mode) => DropdownMenuItem(
+                value: mode,
+                child: Text(SettingsCubit.themeLabel(mode)),
+              ),
+            )
+            .toList(),
+        onChanged: (mode) {
+          if (mode != null) {
+            context.read<SettingsCubit>().setThemeMode(mode);
+          }
+        },
+      ),
     );
   }
 
-  Widget _buildCompactModeTile(BuildContext context) {
+  Widget _buildCompactModeTile(
+      BuildContext context, SettingsState settingsState) {
     return SwitchListTile(
       secondary: const Icon(Icons.density_medium),
       title: const Text('Compact Mode'),
       subtitle: const Text('Use smaller spacing and sizes'),
-      value: false,
+      value: settingsState.compactMode,
       onChanged: (value) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Compact mode ${value ? "enabled" : "disabled"}'),
-          ),
-        );
+        context.read<SettingsCubit>().toggleCompactMode(value);
       },
     );
   }
@@ -241,19 +305,100 @@ class _SettingsPageState extends State<SettingsPage> {
     String title,
     String subtitle,
     bool value,
+    ValueChanged<bool> onChanged,
   ) {
     return SwitchListTile(
       title: Text(title),
       subtitle: Text(subtitle),
       value: value,
-      onChanged: (newValue) {
-        // TODO: Implement notification preferences
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('$title ${newValue ? "enabled" : "disabled"}'),
-          ),
-        );
-      },
+      onChanged: onChanged,
+    );
+  }
+
+  Widget _buildAiAssistantCard(
+    BuildContext context,
+    SettingsState settingsState,
+  ) {
+    final hasKey = settingsState.hasOpenAiKey;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AppConstants.defaultPadding),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'GitFolio Copilot',
+              style: Theme.of(context)
+                  .textTheme
+                  .titleMedium
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Connect your OpenAI-compatible API key to unlock the RAG chatbot '
+              'that can answer repo questions and suggest new project ideas.',
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: Theme.of(context).colorScheme.onSurface),
+            ),
+            const SizedBox(height: AppConstants.defaultPadding),
+            TextFormField(
+              controller: _apiKeyController,
+              obscureText: _isApiKeyObscured,
+              decoration: InputDecoration(
+                labelText: 'OpenAI API Key',
+                hintText: 'sk-xxxx',
+                prefixIcon: const Icon(Icons.vpn_key),
+                suffixIcon: IconButton(
+                  icon: Icon(_isApiKeyObscured
+                      ? Icons.visibility
+                      : Icons.visibility_off),
+                  onPressed: () {
+                    setState(() => _isApiKeyObscured = !_isApiKeyObscured);
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: AppConstants.defaultPadding),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    icon: const Icon(Icons.save_outlined),
+                    label: const Text('Save API Key'),
+                    onPressed: () async {
+                      await context
+                          .read<SettingsCubit>()
+                          .saveOpenAiKey(_apiKeyController.text);
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Assistant key saved')),
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.smart_toy_outlined),
+                    label: Text(hasKey ? 'Open Copilot' : 'Add key first'),
+                    onPressed: hasKey
+                        ? () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) => const ChatAssistantPage(),
+                              ),
+                            );
+                          }
+                        : null,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -286,5 +431,16 @@ class _SettingsPageState extends State<SettingsPage> {
         ],
       ),
     );
+  }
+
+  Future<void> _launchExternal(BuildContext context, String url) async {
+    final uri = Uri.parse(url);
+    final success = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!context.mounted) return;
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Unable to open link')),
+      );
+    }
   }
 }

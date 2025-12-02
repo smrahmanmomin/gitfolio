@@ -6,6 +6,7 @@ import '../../data/repositories/github_repository_impl.dart';
 import '../../domain/repositories/github_repository.dart';
 import 'github/github_bloc.dart';
 import 'github/github_state.dart';
+import 'settings/settings_cubit.dart';
 
 /// Provides all BLoC instances for the application.
 ///
@@ -54,6 +55,9 @@ class BlocProviders extends StatelessWidget {
             create: (context) =>
                 GithubBloc(repository: context.read<GithubRepository>()),
           ),
+          BlocProvider<SettingsCubit>(
+            create: (context) => SettingsCubit(),
+          ),
         ],
         child: child,
       ),
@@ -99,6 +103,9 @@ class CustomBlocProviders extends StatelessWidget {
       providers: [
         BlocProvider<GithubBloc>(
           create: (context) => GithubBloc(repository: githubRepository),
+        ),
+        BlocProvider<SettingsCubit>(
+          create: (context) => SettingsCubit(),
         ),
       ],
       child: child,

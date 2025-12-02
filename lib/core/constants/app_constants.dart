@@ -82,6 +82,24 @@ class AppConstants {
   /// Key for storing language preference
   static const String languageKey = 'language';
 
+  /// Key for storing compact-mode preference
+  static const String compactModeKey = 'settings_compact_mode';
+
+  /// Key for toggling follower notifications
+  static const String notifyFollowersKey = 'settings_notify_followers';
+
+  /// Key for toggling repository star notifications
+  static const String notifyStarsKey = 'settings_notify_stars';
+
+  /// Key for toggling pull-request notifications
+  static const String notifyPullRequestsKey = 'settings_notify_pull_requests';
+
+  /// Key for the last selected portfolio template
+  static const String selectedTemplateKey = 'settings_selected_template_id';
+
+  /// Key for persisting the AI assistant provider API key
+  static const String openAiApiKeyKey = 'settings_openai_api_key';
+
   // ==================== Cache Duration ====================
 
   /// Duration to cache user profile data
@@ -106,6 +124,16 @@ class AppConstants {
 
   /// Support email
   static const String supportEmail = 'support@gitfolio.app';
+
+  /// Source code repository URL
+  static const String sourceCodeUrl =
+      'https://github.com/smrahmanmomin/gitfolio';
+
+  /// Default embeddings model used by the AI assistant
+  static const String openAiEmbeddingModel = 'text-embedding-3-small';
+
+  /// Default chat completion model used by the AI assistant
+  static const String openAiChatModel = 'gpt-4o-mini';
 
   // ==================== UI Constants ====================
 

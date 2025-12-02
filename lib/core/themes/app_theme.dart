@@ -246,7 +246,24 @@ class AppTheme {
   // ==================== Light Theme ====================
 
   /// Light theme configuration
-  static ThemeData get lightTheme {
+  static ThemeData get lightTheme => _buildLightTheme();
+
+  /// Dark theme configuration
+  static ThemeData get darkTheme => _buildDarkTheme();
+
+  /// Returns the light theme optionally adjusted for compact density.
+  static ThemeData light({bool compactMode = false}) {
+    final base = _buildLightTheme();
+    return compactMode ? _applyCompactDensity(base) : base;
+  }
+
+  /// Returns the dark theme optionally adjusted for compact density.
+  static ThemeData dark({bool compactMode = false}) {
+    final base = _buildDarkTheme();
+    return compactMode ? _applyCompactDensity(base) : base;
+  }
+
+  static ThemeData _buildLightTheme() {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
@@ -349,8 +366,7 @@ class AppTheme {
 
   // ==================== Dark Theme ====================
 
-  /// Dark theme configuration
-  static ThemeData get darkTheme {
+  static ThemeData _buildDarkTheme() {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
@@ -448,6 +464,19 @@ class AppTheme {
 
       // Text theme
       textTheme: _darkTextTheme,
+    );
+  }
+
+  static ThemeData _applyCompactDensity(ThemeData theme) {
+    final denseListTileTheme = theme.listTileTheme.copyWith(
+      dense: true,
+      horizontalTitleGap: 12,
+      minLeadingWidth: 28,
+      minVerticalPadding: 6,
+    );
+    return theme.copyWith(
+      visualDensity: VisualDensity.compact,
+      listTileTheme: denseListTileTheme,
     );
   }
 }
