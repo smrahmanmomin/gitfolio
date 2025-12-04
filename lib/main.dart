@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 import 'core/themes/app_theme.dart';
 import 'presentation/bloc/bloc_providers.dart';
@@ -9,8 +10,10 @@ import 'presentation/pages/splash_screen.dart';
 import 'presentation/pages/login_page.dart';
 import 'presentation/pages/dashboard_page.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Hive.initFlutter();
+  await Hive.openBox<Map>('portfolio_configs');
   runApp(const MyApp());
 }
 

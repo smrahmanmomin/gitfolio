@@ -1,9 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hive/hive.dart';
 import 'package:http/http.dart' as http;
+
 import '../../data/datasources/github_remote_data_source.dart';
+import '../../data/portfolio/datasources/export_service.dart';
+import '../../data/portfolio/datasources/local_portfolio_source.dart';
+import '../../data/portfolio/portfolio_repository_impl.dart';
 import '../../data/repositories/github_repository_impl.dart';
+import '../../domain/portfolio/portfolio_repository.dart';
+import '../../domain/portfolio/portfolio_usecases.dart';
 import '../../domain/repositories/github_repository.dart';
+import '../portfolio/bloc/portfolio_bloc.dart';
 import 'github/github_bloc.dart';
 import 'github/github_state.dart';
 import 'settings/settings_cubit.dart';
@@ -47,6 +55,14 @@ class BlocProviders extends StatelessWidget {
             remoteDataSource: context.read<GithubRemoteDataSource>(),
           ),
         ),
+
+        // Provide the portfolio repository
+        RepositoryProvider<PortfolioRepository>(
+          create: (context) => PortfolioRepositoryImpl(
+            localSource: LocalPortfolioSource(hive: Hive),
+            exportService: const PortfolioExportService(),
+          ),
+        ),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -57,6 +73,19 @@ class BlocProviders extends StatelessWidget {
           ),
           BlocProvider<SettingsCubit>(
             create: (context) => SettingsCubit(),
+          ),
+          BlocProvider<PortfolioBloc>(
+            create: (context) => PortfolioBloc(
+              generatePortfolio: GeneratePortfolioUseCase(
+                context.read<PortfolioRepository>(),
+              ),
+              updateTemplate: UpdateTemplateUseCase(
+                context.read<PortfolioRepository>(),
+              ),
+              exportPortfolio: ExportPortfolioUseCase(
+                context.read<PortfolioRepository>(),
+              ),
+            ),
           ),
         ],
         child: child,
