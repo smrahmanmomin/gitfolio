@@ -4,6 +4,7 @@ import '../../../../core/themes/app_theme.dart';
 import '../../../../data/models/github_user_model.dart';
 import '../../../../data/models/repository_model.dart';
 import '../../../../domain/portfolio/portfolio_entity.dart';
+import '../analytics/portfolio_analytics_section.dart';
 import '../lazy_project_image.dart';
 
 class ProfessionalResumeTemplate extends StatelessWidget {
@@ -72,6 +73,12 @@ class ProfessionalResumeTemplate extends StatelessWidget {
                       _SectionTitle(label: 'Selected projects'),
                       const SizedBox(height: 12),
                       _buildProjectList(theme),
+                    ],
+                    if (config.analyticsEnabled) ...[
+                      const SizedBox(height: 32),
+                      _SectionTitle(label: 'GitHub analytics'),
+                      const SizedBox(height: 12),
+                      _buildAnalyticsSection(theme),
                     ],
                   ],
                 ),
@@ -257,6 +264,19 @@ class ProfessionalResumeTemplate extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildAnalyticsSection(ThemeData theme) {
+    return Card(
+      elevation: 4,
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: PortfolioAnalyticsSection(
+          user: user,
+          repos: repos,
+        ),
+      ),
     );
   }
 }

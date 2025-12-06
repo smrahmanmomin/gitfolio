@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:math' as math;
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:flutter/foundation.dart';
@@ -8,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
 
@@ -25,10 +23,7 @@ import '../providers/portfolio_editor_session.dart';
 import '../bloc/portfolio_bloc.dart';
 import '../bloc/portfolio_event.dart';
 import '../bloc/portfolio_state.dart';
-import '../widgets/analytics/contribution_heatmap.dart';
-import '../widgets/analytics/language_distribution_chart.dart';
-import '../widgets/analytics/repository_metrics.dart';
-import '../widgets/analytics/skill_growth_timeline.dart';
+import '../widgets/analytics/portfolio_analytics_section.dart';
 import '../widgets/export_modal.dart';
 import '../utils/preview_saver.dart';
 import '../widgets/share/share_portfolio_sheet.dart';
@@ -76,8 +71,6 @@ class _PortfolioEditorPageState extends State<PortfolioEditorPage> {
 
   final ValueNotifier<_PreviewData> _previewNotifier =
       ValueNotifier<_PreviewData>(_PreviewData.initial());
-  final ValueNotifier<bool> _previewVisibilityNotifier =
-      ValueNotifier<bool>(true);
   final TextEditingController _bioController = TextEditingController();
 
   @override
@@ -103,7 +96,6 @@ class _PortfolioEditorPageState extends State<PortfolioEditorPage> {
     _bioController.removeListener(_handleBioChanged);
     _bioController.dispose();
     _previewNotifier.dispose();
-    _previewVisibilityNotifier.dispose();
     _session.dispose();
     super.dispose();
   }
@@ -346,6 +338,7 @@ class _PortfolioEditorPageState extends State<PortfolioEditorPage> {
   Future<void> _openExportSheet(BuildContext context) async {
     final config = _editingConfig;
     if (config == null) return;
+    final bioOverride = _sanitizeBioForExport(_bioController.text);
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -353,9 +346,18 @@ class _PortfolioEditorPageState extends State<PortfolioEditorPage> {
         return ExportModal(
           config: config,
           exportService: _exportService,
+          user: _cachedUser,
+          repositories: _cachedRepos,
+          bioOverride: bioOverride,
         );
       },
     );
+  }
+
+  String? _sanitizeBioForExport(String? raw) {
+    if (raw == null) return null;
+    final trimmed = raw.trim();
+    return trimmed.isEmpty ? null : trimmed;
   }
 
   Future<void> _openShareSheet(BuildContext context) async {
@@ -397,11 +399,6 @@ class _PortfolioEditorPageState extends State<PortfolioEditorPage> {
   void _handleLayoutSwitch(bool isMobile) {
     if (_wasMobileLayout == isMobile) return;
     _wasMobileLayout = isMobile;
-    if (isMobile) {
-      _previewVisibilityNotifier.value = false;
-    } else {
-      _previewVisibilityNotifier.value = true;
-    }
   }
 
   @override
@@ -783,30 +780,13 @@ class _PortfolioEditorPageState extends State<PortfolioEditorPage> {
                   children: [
                     controls,
                     const SizedBox(height: 24),
-                    _buildMobilePreviewToggleHint(),
-                    ValueListenableBuilder<bool>(
-                      valueListenable: _previewVisibilityNotifier,
-                      builder: (context, visible, _) {
-                        return AnimatedSwitcher(
-                          duration: _animationDuration,
-                          child: visible
-                              ? _buildPreviewCard(
-                                  context,
-                                  user,
-                                  repos,
-                                  occupiesHeight: false,
-                                )
-                              : _PreviewPlaceholder(
-                                  message:
-                                      'Preview hidden. Use the toggle below to view.',
-                                ),
-                        );
-                      },
-                    ),
+                    _buildMobilePreviewCard(context, user, repos),
                     if (showAnalytics && user != null) ...[
                       const SizedBox(height: 24),
                       _buildAnalyticsPanel(context, user, repos),
                     ],
+                    const SizedBox(height: 24),
+                    _buildMobileActionsCard(context),
                   ],
                 );
               }
@@ -1025,239 +1005,12 @@ class _PortfolioEditorPageState extends State<PortfolioEditorPage> {
     GithubUserModel user,
     List<RepositoryModel> repos,
   ) {
-    return HookBuilder(
-      builder: (context) {
-        final debouncedRepos =
-            useDebouncedValue(repos, const Duration(milliseconds: 250));
-        final contributions = _generateContributionDays(debouncedRepos);
-        final years = contributions.isEmpty
-            ? <int>[DateTime.now().year]
-            : (contributions.map((day) => day.date.year).toSet().toList()
-              ..sort());
-        final languageWeights = _languageDistributionFromRepos(debouncedRepos);
-        final metricsData = _buildRepositoryMetricsData(debouncedRepos);
-        final skillSeries = _buildSkillGrowthSeries(debouncedRepos);
-        final benchmarkSeries = _buildBenchmarkSeries(skillSeries);
-        final markers = _buildSkillMarkers(debouncedRepos);
-
-        return Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'GitHub analytics',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Visualize how ${user.name ?? user.login} shows up on GitHub across contributions, languages, and repository momentum.',
-                  style: Theme.of(context).textTheme.bodySmall,
-                ),
-                const SizedBox(height: 16),
-                ContributionHeatmap(
-                  days: contributions,
-                  availableYears: years,
-                  initialYear: years.isEmpty ? null : years.last,
-                ),
-                const SizedBox(height: 24),
-                LanguageDistributionChart(languageWeights: languageWeights),
-                const SizedBox(height: 24),
-                RepositoryMetrics(data: metricsData),
-                const SizedBox(height: 24),
-                SkillGrowthTimeline(
-                  primarySeries: skillSeries,
-                  benchmarkSeries: benchmarkSeries,
-                  markers: markers,
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: PortfolioAnalyticsSection(user: user, repos: repos),
+      ),
     );
-  }
-
-  List<ContributionDayData> _generateContributionDays(
-    List<RepositoryModel> repos,
-  ) {
-    if (repos.isEmpty) {
-      return const <ContributionDayData>[];
-    }
-    final now = DateTime.now();
-    final start = DateTime(now.year - 1, now.month, now.day);
-    final totalDays = now.difference(start).inDays;
-    final contributions = <DateTime, int>{};
-    for (final repo in repos) {
-      final normalized = DateTime(
-          repo.updatedAt.year, repo.updatedAt.month, repo.updatedAt.day);
-      contributions[normalized] =
-          (contributions[normalized] ?? 0) + 1 + repo.stargazersCount ~/ 75;
-    }
-    final days = <ContributionDayData>[];
-    for (var i = 0; i <= totalDays; i++) {
-      final date = DateTime(start.year, start.month, start.day + i);
-      final normalized = DateTime(date.year, date.month, date.day);
-      days.add(
-        ContributionDayData(
-          date: normalized,
-          count: contributions[normalized] ?? (i % 6 == 0 ? 1 : 0),
-        ),
-      );
-    }
-    return days;
-  }
-
-  Map<String, double> _languageDistributionFromRepos(
-    List<RepositoryModel> repos,
-  ) {
-    if (repos.isEmpty) return const <String, double>{};
-    final totals = <String, double>{};
-    for (final repo in repos) {
-      final language = repo.language?.trim().isEmpty ?? true
-          ? 'Other'
-          : repo.language!.trim();
-      totals[language] = (totals[language] ?? 0) + repo.stargazersCount + 1;
-    }
-    final total = totals.values.fold<double>(0, (sum, value) => sum + value);
-    if (total == 0) {
-      return totals;
-    }
-    return totals.map((key, value) => MapEntry(key, value / total));
-  }
-
-  RepositoryMetricsData _buildRepositoryMetricsData(
-    List<RepositoryModel> repos,
-  ) {
-    final totalStars =
-        repos.fold<int>(0, (sum, repo) => sum + repo.stargazersCount);
-    final totalForks = repos.fold<int>(0, (sum, repo) => sum + repo.forksCount);
-    final totalContributors = repos.fold<int>(
-      0,
-      (sum, repo) => sum + math.max(1, (repo.watchersCount ~/ 4) + 1),
-    );
-    final starTrend = _buildMonthlyTrend(
-      repos,
-      (repo) => repo.stargazersCount.toDouble(),
-    );
-    final forkTrend = _buildMonthlyTrend(
-      repos,
-      (repo) => repo.forksCount.toDouble(),
-    );
-    final contributorTrend = _buildMonthlyTrend(
-      repos,
-      (repo) => math.max(1, repo.watchersCount / 5),
-    );
-    final topRepo = repos.isEmpty ? null : _topRepositoriesByStars(repos).first;
-
-    return RepositoryMetricsData(
-      totalStars: totalStars,
-      totalForks: totalForks,
-      totalContributors: totalContributors,
-      starTrend: starTrend,
-      forkTrend: forkTrend,
-      contributorTrend: contributorTrend,
-      topRepository: topRepo == null
-          ? null
-          : RepositoryHighlight(
-              name: topRepo.name,
-              description: topRepo.description ?? 'Open source initiative',
-              stars: topRepo.stargazersCount,
-              language: topRepo.language ?? 'Unknown',
-            ),
-    );
-  }
-
-  List<double> _buildMonthlyTrend(
-    List<RepositoryModel> repos,
-    double Function(RepositoryModel repo) extractor,
-  ) {
-    final buckets = List<double>.filled(12, 0);
-    if (repos.isEmpty) {
-      for (var i = 0; i < buckets.length; i++) {
-        buckets[i] = (i + 1).toDouble();
-      }
-      return buckets;
-    }
-    final now = DateTime.now();
-    for (final repo in repos) {
-      final diffMonths = (now.year - repo.updatedAt.year) * 12 +
-          (now.month - repo.updatedAt.month);
-      if (diffMonths < 0 || diffMonths > 11) continue;
-      final bucketIndex = 11 - diffMonths;
-      buckets[bucketIndex] += extractor(repo);
-    }
-    if (buckets.every((value) => value == 0)) {
-      for (var i = 0; i < buckets.length; i++) {
-        buckets[i] = (i + 1).toDouble();
-      }
-    }
-    return buckets;
-  }
-
-  List<SkillGrowthPoint> _buildSkillGrowthSeries(List<RepositoryModel> repos) {
-    final now = DateTime.now();
-    final points = <SkillGrowthPoint>[];
-    for (var i = 11; i >= 0; i--) {
-      final monthDate = DateTime(now.year, now.month - i, 1);
-      final monthlyRepos = repos
-          .where(
-            (repo) =>
-                repo.updatedAt.year == monthDate.year &&
-                repo.updatedAt.month == monthDate.month,
-          )
-          .toList();
-      final momentum = monthlyRepos.fold<double>(
-        0,
-        (sum, repo) =>
-            sum +
-            repo.stargazersCount / 75 +
-            (repo.topics.isEmpty ? 0.2 : repo.topics.length * 0.05),
-      );
-      final normalized = monthlyRepos.isEmpty
-          ? 0.2
-          : (momentum / (monthlyRepos.length * 1.5)).clamp(0.0, 1.0);
-      points.add(SkillGrowthPoint(date: monthDate, value: normalized));
-    }
-    return points;
-  }
-
-  List<SkillGrowthPoint> _buildBenchmarkSeries(
-    List<SkillGrowthPoint> primary,
-  ) {
-    if (primary.isEmpty) {
-      return const <SkillGrowthPoint>[];
-    }
-    return primary
-        .map(
-          (point) => SkillGrowthPoint(
-            date: point.date,
-            value: (point.value * 0.85).clamp(0.0, 1.0),
-          ),
-        )
-        .toList();
-  }
-
-  List<SkillTimelineMarker> _buildSkillMarkers(List<RepositoryModel> repos) {
-    final topRepos = _topRepositoriesByStars(repos, limit: 3);
-    return topRepos
-        .map(
-          (repo) => SkillTimelineMarker(
-            date: repo.createdAt,
-            label: repo.name,
-          ),
-        )
-        .toList();
-  }
-
-  List<RepositoryModel> _topRepositoriesByStars(
-    List<RepositoryModel> repos, {
-    int limit = 5,
-  }) {
-    final sorted = List<RepositoryModel>.from(repos);
-    sorted.sort((a, b) => b.stargazersCount.compareTo(a.stargazersCount));
-    return sorted.take(limit).toList();
   }
 
   Widget _buildPreviewCard(
@@ -1267,17 +1020,22 @@ class _PortfolioEditorPageState extends State<PortfolioEditorPage> {
     required bool occupiesHeight,
   }) {
     final theme = Theme.of(context);
-    final previewHeader = Row(
+    final previewHeader = Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      crossAxisAlignment: WrapCrossAlignment.center,
       children: [
-        Text('Live preview', style: theme.textTheme.titleMedium),
-        const Spacer(),
+        Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: Text('Live preview', style: theme.textTheme.titleMedium),
+        ),
         IconButton(
           onPressed: () => _onZoomChanged(math.max(0.8, _zoomValue - 0.05)),
           icon: const Icon(Icons.zoom_out_map),
           tooltip: 'Zoom out',
         ),
-        SizedBox(
-          width: 160,
+        ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 140, maxWidth: 200),
           child: Slider(
             value: _zoomValue,
             onChanged: _onZoomChanged,
@@ -1331,8 +1089,33 @@ class _PortfolioEditorPageState extends State<PortfolioEditorPage> {
       ),
     );
 
-    Widget previewSurface = previewContent;
-    if (!occupiesHeight) {
+    Widget previewSurface;
+    if (occupiesHeight) {
+      previewSurface = LayoutBuilder(
+        builder: (context, constraints) {
+          final maxWidth = math.min(constraints.maxWidth, 720.0);
+          return ClipRect(
+            child: ScrollConfiguration(
+              behavior: const _PreviewScrollBehavior(),
+              child: SingleChildScrollView(
+                key: const ValueKey('mobile-preview-scroll'),
+                padding: EdgeInsets.zero,
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minWidth: maxWidth,
+                      maxWidth: maxWidth,
+                    ),
+                    child: previewContent,
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    } else {
       previewSurface = LayoutBuilder(
         builder: (context, constraints) {
           return ClipRect(
@@ -1342,11 +1125,15 @@ class _PortfolioEditorPageState extends State<PortfolioEditorPage> {
                 key: const ValueKey('desktop-preview-scroll'),
                 primary: false,
                 padding: EdgeInsets.zero,
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minWidth: constraints.maxWidth,
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minWidth: constraints.maxWidth,
+                      maxWidth: constraints.maxWidth,
+                    ),
+                    child: previewContent,
                   ),
-                  child: previewContent,
                 ),
               ),
             ),
@@ -1355,19 +1142,21 @@ class _PortfolioEditorPageState extends State<PortfolioEditorPage> {
       );
     }
 
-    final child = Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        previewHeader,
-        const SizedBox(height: 12),
-        Expanded(child: previewSurface),
-      ],
-    );
+    final previewBody = occupiesHeight
+        ? Expanded(child: previewSurface)
+        : SizedBox(height: 520, child: previewSurface);
 
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: occupiesHeight ? child : SizedBox(height: 520, child: child),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            previewHeader,
+            const SizedBox(height: 12),
+            previewBody,
+          ],
+        ),
       ),
     );
   }
@@ -1409,66 +1198,163 @@ class _PortfolioEditorPageState extends State<PortfolioEditorPage> {
     }
   }
 
-  Widget _buildMobilePreviewToggleHint() {
-    return ValueListenableBuilder<bool>(
-      valueListenable: _previewVisibilityNotifier,
-      builder: (context, visible, _) {
-        final label = visible ? 'Hide preview' : 'Show preview';
-        return Text(
-          '$label to switch between editor and preview.',
-          style: Theme.of(context).textTheme.bodySmall,
-        );
-      },
-    );
-  }
-
-  Widget _buildBottomBar(BuildContext context) {
+  Widget? _buildBottomBar(BuildContext context) {
     final isMobile = MediaQuery.of(context).size.width < 900;
+    if (isMobile) {
+      return null;
+    }
     return BottomAppBar(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: SafeArea(
         top: false,
-        child: Row(
+        child: _buildActionControls(context),
+      ),
+    );
+  }
+
+  Widget _buildMobileActionsCard(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: _buildActionControls(context),
+      ),
+    );
+  }
+
+  Widget _buildMobilePreviewCard(
+    BuildContext context,
+    GithubUserModel? user,
+    List<RepositoryModel> repos,
+  ) {
+    final canPreview = user != null && _editingConfig != null;
+    VoidCallback? openPreview;
+    if (canPreview) {
+      final previewUser = user;
+      openPreview = () => _openMobilePreview(context, previewUser, repos);
+    }
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Row(
+              children: [
+                const Icon(Icons.smartphone),
+                const SizedBox(width: 8),
+                Text(
+                  'Mobile preview',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Open a full-screen preview optimized for touch devices.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 16),
             FilledButton.icon(
-              onPressed: _editingConfig == null
-                  ? null
-                  : () => _openExportSheet(context),
-              icon: const Icon(Icons.ios_share),
-              label: const Text('Export'),
+              onPressed: openPreview,
+              icon: const Icon(Icons.fullscreen),
+              label: Text(canPreview ? 'Open preview' : 'Preview unavailable'),
             ),
-            const SizedBox(width: 12),
-            OutlinedButton.icon(
-              onPressed: _editingConfig == null
-                  ? null
-                  : () => _openShareSheet(context),
-              icon: const Icon(Icons.qr_code_2),
-              label: const Text('Share'),
-            ),
-            const SizedBox(width: 12),
-            OutlinedButton.icon(
-              onPressed:
-                  _editingConfig == null ? null : () => _saveDraft(context),
-              icon: const Icon(Icons.save_outlined),
-              label: const Text('Save draft'),
-            ),
-            const Spacer(),
-            if (isMobile)
-              ValueListenableBuilder<bool>(
-                valueListenable: _previewVisibilityNotifier,
-                builder: (context, visible, _) {
-                  return IconButton(
-                    onPressed: () =>
-                        _previewVisibilityNotifier.value = !visible,
-                    icon:
-                        Icon(visible ? Icons.visibility_off : Icons.visibility),
-                    tooltip: visible ? 'Hide preview' : 'Show preview',
-                  );
-                },
-              ),
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _openMobilePreview(
+    BuildContext context,
+    GithubUserModel user,
+    List<RepositoryModel> repos,
+  ) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (modalContext) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Live preview')),
+            body: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: _buildPreviewCard(
+                        modalContext,
+                        user,
+                        repos,
+                        occupiesHeight: true,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildActionControls(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isCompact = constraints.maxWidth < 520;
+        Widget expand(Widget child) {
+          if (!isCompact) return child;
+          return SizedBox(width: double.infinity, child: child);
+        }
+
+        final exportButton = expand(
+          FilledButton.icon(
+            onPressed:
+                _editingConfig == null ? null : () => _openExportSheet(context),
+            icon: const Icon(Icons.ios_share),
+            label: const Text('Export'),
+          ),
+        );
+        final shareButton = expand(
+          OutlinedButton.icon(
+            onPressed:
+                _editingConfig == null ? null : () => _openShareSheet(context),
+            icon: const Icon(Icons.qr_code_2),
+            label: const Text('Share'),
+          ),
+        );
+        final saveButton = expand(
+          OutlinedButton.icon(
+            onPressed:
+                _editingConfig == null ? null : () => _saveDraft(context),
+            icon: const Icon(Icons.save_outlined),
+            label: const Text('Save draft'),
+          ),
+        );
+
+        if (isCompact) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              exportButton,
+              const SizedBox(height: 12),
+              shareButton,
+              const SizedBox(height: 12),
+              saveButton,
+            ],
+          );
+        }
+
+        return Row(
+          children: [
+            exportButton,
+            const SizedBox(width: 12),
+            shareButton,
+            const SizedBox(width: 12),
+            saveButton,
+          ],
+        );
+      },
     );
   }
 
@@ -1791,22 +1677,4 @@ class _PreviewScrollBehavior extends ScrollBehavior {
   ) {
     return child;
   }
-}
-
-T useDebouncedValue<T>(T value, Duration duration) {
-  final state = useState<T>(value);
-  final previous = useRef<T>(value);
-
-  useEffect(() {
-    if (previous.value == value) {
-      return null;
-    }
-    previous.value = value;
-    Timer? timer = Timer(duration, () {
-      state.value = value;
-    });
-    return timer.cancel;
-  }, [value, duration]);
-
-  return state.value;
 }

@@ -5,6 +5,7 @@ import '../../../../core/themes/app_theme.dart';
 import '../../../../data/models/github_user_model.dart';
 import '../../../../data/models/repository_model.dart';
 import '../../../../domain/portfolio/portfolio_entity.dart';
+import '../analytics/portfolio_analytics_section.dart';
 import '../lazy_project_image.dart';
 
 class ModernDeveloperTemplate extends StatelessWidget {
@@ -28,7 +29,7 @@ class ModernDeveloperTemplate extends StatelessWidget {
         final languages = _languageWeights(repos);
         final theme = Theme.of(context);
 
-        return Padding(
+        return SingleChildScrollView(
           padding: EdgeInsets.symmetric(
             horizontal: isDesktop ? 48 : 16,
             vertical: 24,
@@ -50,6 +51,8 @@ class ModernDeveloperTemplate extends StatelessWidget {
                   repos: repos,
                   columns: gridColumns,
                 ),
+              if (config.analyticsEnabled) const SizedBox(height: 24),
+              if (config.analyticsEnabled) _buildAnalyticsCard(theme),
               if (_shouldShow(PortfolioSection.contact))
                 const SizedBox(height: 24),
               if (_shouldShow(PortfolioSection.contact))
@@ -138,6 +141,20 @@ class ModernDeveloperTemplate extends StatelessWidget {
             const SizedBox(height: 12),
             ...items,
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAnalyticsCard(ThemeData theme) {
+    return Card(
+      elevation: 6,
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: PortfolioAnalyticsSection(
+          user: user,
+          repos: repos,
+          title: 'GitHub insights',
         ),
       ),
     );

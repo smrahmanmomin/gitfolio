@@ -6,6 +6,7 @@ import '../../../../core/themes/app_theme.dart';
 import '../../../../data/models/github_user_model.dart';
 import '../../../../data/models/repository_model.dart';
 import '../../../../domain/portfolio/portfolio_entity.dart';
+import '../analytics/portfolio_analytics_section.dart';
 import '../lazy_project_image.dart';
 
 class CreativePortfolioTemplate extends StatefulWidget {
@@ -45,6 +46,9 @@ class _CreativePortfolioTemplateState extends State<CreativePortfolioTemplate> {
           end: Alignment.bottomRight,
         );
 
+        final horizontalPadding = isWide ? 48.0 : 20.0;
+        final contentWidth = constraints.maxWidth - (horizontalPadding * 2);
+
         return Container(
           decoration: BoxDecoration(gradient: gradient),
           child: Stack(
@@ -52,7 +56,7 @@ class _CreativePortfolioTemplateState extends State<CreativePortfolioTemplate> {
               Positioned.fill(child: CustomPaint(painter: _NebulaPainter())),
               SingleChildScrollView(
                 padding: EdgeInsets.symmetric(
-                  horizontal: isWide ? 48 : 20,
+                  horizontal: horizontalPadding,
                   vertical: 32,
                 ),
                 child: Column(
@@ -69,7 +73,11 @@ class _CreativePortfolioTemplateState extends State<CreativePortfolioTemplate> {
                     if (_show(PortfolioSection.projects))
                       const SizedBox(height: 32),
                     if (_show(PortfolioSection.projects))
-                      _buildCreativeProjects(context, isWide),
+                      _buildCreativeProjects(context, isWide, contentWidth),
+                    if (widget.config.analyticsEnabled)
+                      const SizedBox(height: 32),
+                    if (widget.config.analyticsEnabled)
+                      _buildAnalyticsSection(context),
                   ],
                 ),
               ),
@@ -158,60 +166,69 @@ class _CreativePortfolioTemplateState extends State<CreativePortfolioTemplate> {
 
   Widget _buildTimeline(BuildContext context, bool isWide) {
     final items = _timelineItems(widget.user, widget.repos);
+    final stepper = Stepper(
+      type: isWide ? StepperType.horizontal : StepperType.vertical,
+      currentStep: _currentStep,
+      onStepTapped: (index) => setState(() => _currentStep = index),
+      controlsBuilder: (context, details) => const SizedBox.shrink(),
+      steps: [
+        for (final item in items)
+          Step(
+            title: Text(
+              item.title,
+              style: Theme.of(context)
+                  .textTheme
+                  .labelLarge
+                  ?.copyWith(color: Colors.white),
+            ),
+            content: Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                item.subtitle,
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(color: Colors.white70),
+              ),
+            ),
+            state: StepState.indexed,
+            isActive: items.indexOf(item) <= _currentStep,
+          ),
+      ],
+    );
+
     return Card(
       color: Colors.white.withAlpha((0.1 * 255).round()),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-      child: SizedBox(
-        height: isWide ? 320 : 420,
-        child: Stepper(
-          type: StepperType.horizontal,
-          currentStep: _currentStep,
-          onStepTapped: (index) => setState(() => _currentStep = index),
-          controlsBuilder: (context, details) => const SizedBox.shrink(),
-          steps: [
-            for (final item in items)
-              Step(
-                title: Text(
-                  item.title,
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelLarge
-                      ?.copyWith(color: Colors.white),
-                ),
-                content: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    item.subtitle,
-                    style: Theme.of(context)
-                        .textTheme
-                        .bodyMedium
-                        ?.copyWith(color: Colors.white70),
-                  ),
-                ),
-                state: StepState.indexed,
-                isActive: items.indexOf(item) <= _currentStep,
-              ),
-          ],
-        ),
-      ),
+      child: isWide
+          ? SizedBox(height: 320, child: stepper)
+          : Padding(
+              padding: const EdgeInsets.all(8),
+              child: stepper,
+            ),
     );
   }
 
-  Widget _buildCreativeProjects(BuildContext context, bool isWide) {
+  Widget _buildCreativeProjects(
+    BuildContext context,
+    bool isWide,
+    double contentWidth,
+  ) {
     final projects = widget.repos.take(4).toList();
     if (projects.isEmpty) {
       return const SizedBox.shrink();
     }
     final theme = Theme.of(context);
+    final cardWidth = isWide
+        ? math.max((contentWidth - 16) / 2, 240).toDouble()
+        : double.infinity;
     return Wrap(
       spacing: 16,
       runSpacing: 16,
       children: [
         for (final project in projects)
           SizedBox(
-            width: isWide
-                ? (MediaQuery.of(context).size.width / 2) - 64
-                : double.infinity,
+            width: cardWidth,
             child: Card(
               color: Colors.white.withAlpha((0.12 * 255).round()),
               shape: RoundedRectangleBorder(
@@ -262,6 +279,23 @@ class _CreativePortfolioTemplateState extends State<CreativePortfolioTemplate> {
             ),
           ),
       ],
+    );
+  }
+
+  Widget _buildAnalyticsSection(BuildContext context) {
+    return Card(
+      color: Colors.white.withAlpha((0.1 * 255).round()),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: PortfolioAnalyticsSection(
+          user: widget.user,
+          repos: widget.repos,
+          title: 'Pulse report',
+          description:
+              'Contribution streaks, languages, and repo momentum in one glance.',
+        ),
+      ),
     );
   }
 }

@@ -182,10 +182,9 @@ packages:
   flutter_web_auth_2:
     dependency: "direct main"
     description:
-      name: flutter_web_auth_2
-      sha256: "4d3d2fd3d26bf1a26b3beafd4b4b899c0ffe10dc99af25abc58ffe24e991133c"
-      url: "https://pub.dev"
-    source: hosted
+      path: "third_party/flutter_web_auth_2"
+      relative: true
+    source: path
     version: "3.1.2"
   flutter_web_auth_2_platform_interface:
     dependency: transitive

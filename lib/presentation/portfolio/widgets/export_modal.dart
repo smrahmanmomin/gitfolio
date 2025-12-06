@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../../data/models/github_user_model.dart';
+import '../../../data/models/repository_model.dart';
 import '../../../data/portfolio/datasources/export_service.dart';
 import '../../../domain/portfolio/portfolio_entity.dart';
 import '../utils/artifact_saver.dart';
@@ -13,10 +15,16 @@ class ExportModal extends StatefulWidget {
     super.key,
     required this.config,
     this.exportService = const PortfolioExportService(),
+    this.user,
+    this.repositories = const <RepositoryModel>[],
+    this.bioOverride,
   });
 
   final PortfolioConfig config;
   final PortfolioExportService exportService;
+  final GithubUserModel? user;
+  final List<RepositoryModel> repositories;
+  final String? bioOverride;
 
   @override
   State<ExportModal> createState() => _ExportModalState();
@@ -124,13 +132,33 @@ class _ExportModalState extends State<ExportModal> {
   Future<Uint8List> _runExport() {
     switch (_selectedFormat) {
       case ExportFormat.pdf:
-        return widget.exportService.exportToPdf(widget.config);
+        return widget.exportService.exportToPdf(
+          widget.config,
+          user: widget.user,
+          repositories: widget.repositories,
+          bioOverride: widget.bioOverride,
+        );
       case ExportFormat.markdown:
-        return widget.exportService.exportToMarkdown(widget.config);
+        return widget.exportService.exportToMarkdown(
+          widget.config,
+          user: widget.user,
+          repositories: widget.repositories,
+          bioOverride: widget.bioOverride,
+        );
       case ExportFormat.html:
-        return widget.exportService.exportToHtml(widget.config);
+        return widget.exportService.exportToHtml(
+          widget.config,
+          user: widget.user,
+          repositories: widget.repositories,
+          bioOverride: widget.bioOverride,
+        );
       case ExportFormat.json:
-        return widget.exportService.exportToJson(widget.config);
+        return widget.exportService.exportToJson(
+          widget.config,
+          user: widget.user,
+          repositories: widget.repositories,
+          bioOverride: widget.bioOverride,
+        );
     }
   }
 

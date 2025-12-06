@@ -52,45 +52,54 @@ class _SkillsSectionWidgetState extends State<SkillsSectionWidget> {
   @override
   Widget build(BuildContext context) {
     final heroTag = widget.data.heroTag ?? 'skills-section';
-    return SizedBox(
-      height: 480,
-      child: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            pinned: true,
-            expandedHeight: 140,
-            flexibleSpace: FlexibleSpaceBar(
-              title: const Text('Skill radar'),
-              background: Hero(
-                tag: heroTag,
-                child: Container(
-                  color: Theme.of(context).colorScheme.primary,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final targetHeight = constraints.hasBoundedHeight &&
+                constraints.maxHeight.isFinite &&
+                constraints.maxHeight > 0
+            ? constraints.maxHeight
+            : 480.0;
+        return SizedBox(
+          height: targetHeight,
+          child: CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                pinned: true,
+                expandedHeight: 140,
+                flexibleSpace: FlexibleSpaceBar(
+                  title: const Text('Skill radar'),
+                  background: Hero(
+                    tag: heroTag,
+                    child: Container(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  AspectRatio(
-                    aspectRatio: 1.3,
-                    child: _buildRadarChart(context),
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    children: [
+                      AspectRatio(
+                        aspectRatio: 1.3,
+                        child: _buildRadarChart(context),
+                      ),
+                      const SizedBox(height: 16),
+                      _SkillsList(
+                        isEditable: widget.isEditable,
+                        skills: widget.data.skills,
+                        onRemove: widget.onRemoveSkill,
+                      ),
+                      if (widget.isEditable) _buildAddSkillForm(context),
+                    ],
                   ),
-                  const SizedBox(height: 16),
-                  _SkillsList(
-                    isEditable: widget.isEditable,
-                    skills: widget.data.skills,
-                    onRemove: widget.onRemoveSkill,
-                  ),
-                  if (widget.isEditable) _buildAddSkillForm(context),
-                ],
+                ),
               ),
-            ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

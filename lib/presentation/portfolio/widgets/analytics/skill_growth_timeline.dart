@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 
@@ -129,9 +131,13 @@ class SkillGrowthTimeline extends StatelessWidget {
           }
           final ratio = (marker.date.millisecondsSinceEpoch - minX) /
               (maxX - minX == 0 ? 1 : maxX - minX);
+          final rawLeft = ratio * constraints.maxWidth;
+          final clampedLeft = rawLeft
+              .clamp(0.0, math.max(0.0, constraints.maxWidth - 120))
+              .toDouble();
           markerWidgets.add(
             Positioned(
-              left: ratio * constraints.maxWidth,
+              left: clampedLeft,
               top: 0,
               child: Tooltip(
                 message: marker.label,
